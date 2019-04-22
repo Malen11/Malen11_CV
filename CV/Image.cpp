@@ -178,9 +178,52 @@ inline int Image::GetColsNumber() {
 	return this->cols;
 }
 
+uchar * Image::GetData()
+{
+	if (cols*rows == 0) {
+	
+		return NULL;
+	}
+	else {
+
+		uchar* temp = new uchar[rows*cols];
+		copy(data, &(data[rows * cols]), stdext::checked_array_iterator<uchar*>(temp, rows*cols));
+
+		return temp;
+	}
+}
+
 inline uchar Image::GetValueAt(int row, int col) {
 
 	return this->data[row*this->cols + col];
+}
+
+uchar Image::GetMinValue() {
+	
+	uchar min = 255;
+
+	int size = rows * cols;
+	for (int i = 0; i < size; i++) {
+
+		if (data[i] < min)
+			min = data[i];
+	}
+
+	return min;
+}
+
+uchar Image::GetMaxValue() {
+
+	uchar max = 0;
+
+	int size = rows * cols;
+	for (int i = 0; i < size; i++) {
+
+		if (data[i] > max)
+			max = data[i];
+	}
+
+	return max;
 }
 
 inline void Image::SetValueAt(int row, int col, uchar value) {

@@ -26,14 +26,20 @@ public:
 	Image& operator -(const Image& other);					//вычитание для ленивых
 	Image& operator +(const Image& other);					//сложение для ленивых
 
+	//get
 	int GetRowsNumber();									//получить количество строк
 	int GetColsNumber();									//получить количество столбцов
+	uchar* GetData();										//получить данные
 	uchar GetValueAt(int row, int col);						//получить значение в позиции [row, col]
+	uchar GetMinValue();									//получить минимальное значение
+	uchar GetMaxValue();									//получить максимальное значение
+	cv::Mat GetMat();										//преобразовывет матрицу данных к другому типу данных
+
+	//set
 	void SetValueAt(int row, int col, uchar value);			// установить значение value в позиции [row, col]
+
 	void Print();											//вывод данных на экран
 	bool IsEmpty();											//проверяет, пустое ли изображение
-	cv::Mat GetMat();										//преобразовывет матрицу данных к другому типу данных
 
 	~Image();
 };
-
