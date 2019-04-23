@@ -20,58 +20,37 @@ Image::Image(cv::Mat img, int type) {
 
 	this->data = new uchar[cols*rows];
 
-	int step;
+	int size = cols * rows;
+	uchar* img_mat= img.data;
 
 	switch (type) {
 	case RED:
-		for (int i = 0; i < rows; i++) {
-
-			step = i * cols;
-
-			for (int j = 0; j < cols; j++) {
-
-				this->data[step + j] = img.at<cv::Vec3b>(cv::Point(j, i))[2];
-			}
+		for (int i = 0; i < size; i++) {
+			this->data[i] = img_mat[3 * i + 2];
 		}
 
 		break;
 	case GREEN:
-		for (int i = 0; i < rows; i++) {
-
-			step = i * cols;
-
-			for (int j = 0; j < cols; j++) {
-
-				this->data[step + j] = img.at<cv::Vec3b>(cv::Point(j, i))[1];
-			}
+		for (int i = 0; i < size; i++) {
+			this->data[i] = img_mat[3 * i + 1];
 		}
 
 		break;
 	case BLUE:
-		for (int i = 0; i < rows; i++) {
-
-			step = i * cols;
-
-			for (int j = 0; j < cols; j++) {
-
-				this->data[step + j] = img.at<cv::Vec3b>(cv::Point(j, i))[0];
-			}
+		for (int i = 0; i < size; i++) {
+			this->data[i] = img_mat[3 * i];
 		}
 
 		break;
+	case RGB2GRAY_NTSC:
+		for (int i = 0; i < size; i++) {
+			this->data[i] = 0.299*img_mat[3 * i + 2] + 0.587*img_mat[3 * i + 1] + 0.114*img_mat[3 * i];
+		}
 
+		break;
 	default:
-
-		cv::Vec3b pixel;
-
-		for (int i = 0; i < rows; i++) {
-
-			step = i * cols;
-
-			for (int j = 0; j < cols; j++) {
-
-				this->data[step + j] = 0.213*img.at<cv::Vec3b>(cv::Point(j, i))[2] + 0.715*img.at<cv::Vec3b>(cv::Point(j, i))[1] + 0.072*img.at<cv::Vec3b>(cv::Point(j, i))[0];
-			}
+		for (int i = 0; i < size; i++) {
+			this->data[i] = 0.213*img_mat[3 * i + 2] + 0.715*img_mat[3 * i + 1] + 0.072*img_mat[3 * i];
 		}
 
 		break;
@@ -124,7 +103,7 @@ Mat Image::GetMat() {
 	else {
 
 		Mat temp(this->rows, this->cols, CV_8UC1);
-		copy(data, &(data[rows * cols]), stdext::checked_array_iterator<uchar*>(temp.data,rows*cols));
+		copy(data, &(data[rows * cols]), stdext::checked_array_iterator<uchar*>(temp.data, rows*cols));
 
 		return temp;
 	}
@@ -191,6 +170,38 @@ uchar * Image::GetData()
 
 		return temp;
 	}
+}
+
+uchar * Image::GetNormalizeDataUC() {
+
+	int max = this->GetMaxValue();
+	int min = this->GetMinValue();
+	int size = rows * cols;
+	
+	uchar* result = new uchar[size];
+
+	for (int i = 0; i < size; i++) {
+
+		result[i] = (255 * (data[i] - min)) / (max - min);
+	}
+
+	return result;
+}
+
+double* Image::GetNormalizeDataF() {
+
+	int max = this->GetMaxValue();
+	int min = this->GetMinValue();
+	int size = rows * cols;
+
+	double* result = new double[size];
+
+	for (int i = 0; i < size; i++) {
+
+		result[i] = (data[i] - min) / (double)(max - min);
+	}
+
+	return result;
 }
 
 inline uchar Image::GetValueAt(int row, int col) {

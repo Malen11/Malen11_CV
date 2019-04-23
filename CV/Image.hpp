@@ -3,7 +3,8 @@
 
 //Константы
 
-const int RGB2GRAY = 100;
+const int RGB2GRAY_NTSC = 105;
+const int RGB2GRAY_HDTV = 104;
 const int RED = 103;
 const int GREEN = 102;
 const int BLUE = 101;
@@ -18,7 +19,7 @@ private:
 	int cols;			//количество столбцов
 public:
 	Image();												//конструктор по умолчанию (0 строк и столбцов, указатель матрицы = NULL)
-	Image(cv::Mat img, int type = RGB2GRAY);				//конструктор на основе матрицы
+	Image(cv::Mat img, int type = RGB2GRAY_HDTV);				//конструктор на основе матрицы
 	Image(int rows, int cols, uchar** matrix);				//конструктор на основе массива
 	Image(const Image& other);								//конструктор копирования
 
@@ -30,6 +31,8 @@ public:
 	int GetRowsNumber();									//получить количество строк
 	int GetColsNumber();									//получить количество столбцов
 	uchar* GetData();										//получить данные
+	uchar* GetNormalizeDataUC();							//получить нормализованные данные типа uchar
+	double* GetNormalizeDataF();							//получить нормализованные данные типа double
 	uchar GetValueAt(int row, int col);						//получить значение в позиции [row, col]
 	uchar GetMinValue();									//получить минимальное значение
 	uchar GetMaxValue();									//получить максимальное значение
