@@ -3,13 +3,28 @@
 
 struct Core {
 	
-	int k;
-	double* data;
+	int k = 0;
+	double* data = NULL;
 };
 
-const class CV {
+/*struct SeparableCore {
+
+	int k = 0;
+	double* dataX = NULL;
+	double* dataY = NULL;
+};*/
+
+class CV {
 private:
 public:
-	uchar* ApplyFilterRaw(int rows, int cols, uchar* data, Core core);
-	Image ApplyFilter(Image& img, Core core);
+	static const int kZeroBorder = 201;			//заполнить края 0
+	static const int kExpandBorder = 202;		//использовать крайний пиксель
+	static const int kReflectionBorder = 203;	//отразить границу
+	static const int kWrapBorder = 204;			//заворачивать границу
+
+	template <typename T>
+	static double* ApplyFilterRaw(int rows, int cols, T* data, Core core, int type);
+	template <typename T>
+	static T* ExpandImgByZero(int rows, int cols, T* data, int k);
+	static Image ApplyFilter(Image& img, Core core, int type);
 };

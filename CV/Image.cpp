@@ -24,25 +24,25 @@ Image::Image(cv::Mat img, int type) {
 	uchar* img_mat= img.data;
 
 	switch (type) {
-	case RED:
+	case kRED:
 		for (int i = 0; i < size; i++) {
 			this->data[i] = img_mat[3 * i + 2];
 		}
 
 		break;
-	case GREEN:
+	case kGREEN:
 		for (int i = 0; i < size; i++) {
 			this->data[i] = img_mat[3 * i + 1];
 		}
 
 		break;
-	case BLUE:
+	case kBLUE:
 		for (int i = 0; i < size; i++) {
 			this->data[i] = img_mat[3 * i];
 		}
 
 		break;
-	case RGB2GRAY_NTSC:
+	case kRGB2GRAY_NTSC:
 		for (int i = 0; i < size; i++) {
 			this->data[i] = 0.299*img_mat[3 * i + 2] + 0.587*img_mat[3 * i + 1] + 0.114*img_mat[3 * i];
 		}
@@ -57,34 +57,6 @@ Image::Image(cv::Mat img, int type) {
 	}
 }
 
-Image::Image(int rows, int cols, uchar** matrix) {
-
-	this->rows = rows;
-	this->cols = cols;
-
-	if (cols > 0 && rows > 0 && matrix != NULL) {
-
-		this->data = new uchar[cols*rows];
-
-		int step;
-		for (int i = 0; i < rows; i++) {
-
-			step = i * cols;
-			for (int j = 0; j < cols; j++) {
-
-				this->data[step + j] = matrix[i][j];
-			}
-		}
-	}
-	else {
-
-		std::cout << "Image(int rows, int cols, const uchar ** matrix): Empty array given, using default." << endl;
-		this->data = NULL;
-		this->cols = 0;
-		this->rows = 0;
-	}
-}
-
 Image::Image(const Image& other) {
 
 	this->cols = other.cols;
@@ -94,7 +66,7 @@ Image::Image(const Image& other) {
 	copy(other.data, &(other.data[rows * cols]), stdext::checked_array_iterator<uchar*>(this->data, rows*cols));
 }
 
-Mat Image::GetMat() {
+Mat Image::GetMat() const {
 
 	if (this->IsEmpty()) {
 
@@ -115,7 +87,7 @@ Image::~Image() {
 		delete[] data;
 }
 
-void Image::Print() {
+void Image::Print() const {
 
 	int step;
 
@@ -139,7 +111,7 @@ void Image::Print() {
 	cout << endl;
 }
 
-inline bool Image::IsEmpty() {
+bool Image::IsEmpty() const {
 
 	if (this->cols > 0 && this->rows > 0 && this->data != NULL)
 		return false;
@@ -147,18 +119,29 @@ inline bool Image::IsEmpty() {
 		return true;
 }
 
-inline int Image::GetRowsNumber() {
+void Image::Swap(Image & other) {
+
+	// swap all the members (and base subobject, if applicable) with other
+	using std::swap; // because of ADL the compiler will use 
+						// custom swap for members if it exists
+						// falling back to std::swap
+	swap(this->data, other.data);
+	swap(this->rows, other.rows);
+	swap(this->cols, other.cols);
+}
+
+int Image::GetRowsNumber()  const {
 
 	return this->rows;
 }
 
-inline int Image::GetColsNumber() {
+int Image::GetColsNumber() const {
 
 	return this->cols;
 }
 
-uchar * Image::GetData()
-{
+uchar* Image::GetData() const {
+
 	if (cols*rows == 0) {
 	
 		return NULL;
@@ -172,7 +155,7 @@ uchar * Image::GetData()
 	}
 }
 
-uchar * Image::GetNormalizeDataUC() {
+uchar* Image::GetNormalizeDataUC()  const {
 
 	int max = this->GetMaxValue();
 	int min = this->GetMinValue();
@@ -188,7 +171,7 @@ uchar * Image::GetNormalizeDataUC() {
 	return result;
 }
 
-double* Image::GetNormalizeDataF() {
+double* Image::GetNormalizeDataF()  const {
 
 	int max = this->GetMaxValue();
 	int min = this->GetMinValue();
@@ -204,12 +187,12 @@ double* Image::GetNormalizeDataF() {
 	return result;
 }
 
-inline uchar Image::GetValueAt(int row, int col) {
+uchar Image::GetValueAt(int row, int col)  const {
 
 	return this->data[row*this->cols + col];
 }
 
-uchar Image::GetMinValue() {
+uchar Image::GetMinValue()  const {
 	
 	uchar min = 255;
 
@@ -223,7 +206,7 @@ uchar Image::GetMinValue() {
 	return min;
 }
 
-uchar Image::GetMaxValue() {
+uchar Image::GetMaxValue()  const {
 
 	uchar max = 0;
 
@@ -237,22 +220,14 @@ uchar Image::GetMaxValue() {
 	return max;
 }
 
-inline void Image::SetValueAt(int row, int col, uchar value) {
+void Image::SetValueAt(int row, int col, uchar value) {
 
 	this->data[row*this->cols + col] = value;
 }
 
-Image& Image::operator=(const Image& other) {
-
-	if (!this->IsEmpty())
-		delete[] this->data;
-
-	this->cols = other.cols;
-	this->rows = other.rows;
-	this->data = new uchar[cols*rows];
-
-	copy(other.data, &(other.data[rows * cols]), stdext::checked_array_iterator<uchar*>(this->data, rows*cols));
-
+Image& Image::operator=(Image other) {
+	
+	Swap(other);
 	return *this;
 }
 

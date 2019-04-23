@@ -71,13 +71,33 @@ int main() {
 
 	VideoCapture cap = StartCapture();
 
-	namedWindow("test", CV_WINDOW_NORMAL);
+	//namedWindow("test", CV_WINDOW_NORMAL);
+
+	Core myCore;
+	myCore.k = 1;
+	myCore.data = new double[(2 * myCore.k + 1)*(2 * myCore.k + 1)];
+
+	int center = myCore.k * (2 * myCore.k + 1) + myCore.k;
+	double q= 1.0 / ((2 * myCore.k + 1)*(2 * myCore.k + 1));
+
+	for (int i = -myCore.k; i <= myCore.k; i++) {
+		for (int j = -myCore.k; j <= myCore.k; j++) {
+
+			myCore.data[center + i*(2*myCore.k+1) + j] = q;
+		}
+	}
+
+	Image test;
+	Image test2;
 
 	while (true) {
 
 		cap >> frame;
-		Image test(frame);
-		imshow("test", test.GetMat());
+		test = Image(frame);
+
+		imshow("test1", test.GetMat());
+		test2 = CV::ApplyFilter(test, myCore, CV::kZeroBorder);
+		imshow("test2", test2.GetMat());
 		waitKey(30);
 	}
 
