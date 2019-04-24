@@ -65,30 +65,52 @@ VideoCapture StartCapture() {
 	return cap;
 }
 
-int main() {
+/** function LoadImage */
+Mat LoadImage() {
 
-	Mat frame;
+	string input;
+	int selected;
+	cv::Mat img;
+	while (true) {
 
-	VideoCapture cap = StartCapture();
+		cout << "Enter path to file: ";
+		cin >> input;
+		img = cv::imread(input);
 
-	//namedWindow("test", CV_WINDOW_NORMAL);
+		if (img.data != NULL) {
 
-	Core myCore;
-	myCore.k = 1;
-	myCore.data = new double[(2 * myCore.k + 1)*(2 * myCore.k + 1)];
+			cout << "Success!" << endl;
+			break;
+		}
+		else {
 
-	int center = myCore.k * (2 * myCore.k + 1) + myCore.k;
-	double q= 1.0 / ((2 * myCore.k + 1)*(2 * myCore.k + 1));
-
-	for (int i = -myCore.k; i <= myCore.k; i++) {
-		for (int j = -myCore.k; j <= myCore.k; j++) {
-
-			myCore.data[center + i*(2*myCore.k+1) + j] = q;
+			cout << "Wrong file name!" << endl;
+			continue;
 		}
 	}
 
-	Image test;
-	Image test2;
+	return img;
+}
+
+//C:\Users\alist\Desktop\Bikesgray.jpg
+int main() {
+
+	Mat mat = LoadImage();
+
+	Image test(mat);
+	imshow("Base image", test.GetMat());
+	
+	double* ddata = test.GetNormalizeDataF();
+	Image test1(test.GetRowsNumber(), test.GetColsNumber(), ddata,true);
+	imshow("Normalize image", test1.GetMat());
+
+	Image test2 = CV::Sobel(test1);
+	imshow("Sobel", test2.GetMat());
+
+	//test2 = CV::Sobel(test);
+	//imshow("Sobel", test2.GetMat());
+	waitKey();
+/*	VideoCapture cap = StartCapture();
 
 	while (true) {
 
@@ -96,10 +118,10 @@ int main() {
 		test = Image(frame);
 
 		imshow("test1", test.GetMat());
-		test2 = CV::ApplyFilter(test, myCore, CV::kZeroBorder);
+		test2 = CV::Sobel(test);
 		imshow("test2", test2.GetMat());
 		waitKey(30);
 	}
-
+	*/
 	return 0;
 }

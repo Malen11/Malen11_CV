@@ -140,6 +140,11 @@ int Image::GetColsNumber() const {
 	return this->cols;
 }
 
+int Image::GetSize() const
+{
+	return rows*cols;
+}
+
 uchar* Image::GetData() const {
 
 	if (cols*rows == 0) {
@@ -157,23 +162,12 @@ uchar* Image::GetData() const {
 
 uchar* Image::GetNormalizeDataUC()  const {
 
-	int max = this->GetMaxValue();
-	int min = this->GetMinValue();
-	int size = rows * cols;
-	
-	uchar* result = new uchar[size];
-
-	for (int i = 0; i < size; i++) {
-
-		result[i] = (255 * (data[i] - min)) / (max - min);
-	}
-
-	return result;
+	return LinearNormalization<uchar, uchar>(rows*cols, this->data, 0, 255);
 }
 
 double* Image::GetNormalizeDataF()  const {
 
-	int max = this->GetMaxValue();
+	/*int max = this->GetMaxValue();
 	int min = this->GetMinValue();
 	int size = rows * cols;
 
@@ -182,9 +176,9 @@ double* Image::GetNormalizeDataF()  const {
 	for (int i = 0; i < size; i++) {
 
 		result[i] = (data[i] - min) / (double)(max - min);
-	}
+	}*/
 
-	return result;
+	return LinearNormalization<uchar, double>(rows*cols, this->data, 0, 1);
 }
 
 uchar Image::GetValueAt(int row, int col)  const {
