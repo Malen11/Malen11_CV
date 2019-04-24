@@ -93,6 +93,7 @@ Mat LoadImage() {
 }
 
 //C:\Users\alist\Desktop\Bikesgray.jpg
+//C:\Users\alist\Desktop\Valve_original_(1).PNG
 int main() {
 
 	Mat mat = LoadImage();
@@ -104,10 +105,48 @@ int main() {
 	Image test1(test.GetRowsNumber(), test.GetColsNumber(), ddata,true);
 	imshow("Normalize image", test1.GetMat());
 
-	Image test2 = CV::Sobel(test1);
+	Image test2;
+
+	test2 = ComputerVision::Sobel(test1, ComputerVision::kPartDerivativeSobel,ComputerVision::kInterpolateBorder);
+	//test2.NormalizeImage();
 	imshow("Sobel", test2.GetMat());
 
-	//test2 = CV::Sobel(test);
+	test2 = ComputerVision::Sobel(test1, ComputerVision::kPartDerivativePrewitt, ComputerVision::kInterpolateReflection);
+	//test2.NormalizeImage();
+	imshow("Prewitt", test2.GetMat());
+
+	test2 = ComputerVision::Sobel(test1, ComputerVision::kPartDerivativeScharr, ComputerVision::kInterpolateWrap);
+	//test2.NormalizeImage();
+	imshow("Scharr", test2.GetMat());
+
+
+	int scale = 1; 
+	int delta = 0;
+	int ddepth = CV_16S;
+	
+	Mat src_gray;
+	/// Convert it to gray
+	cvtColor(mat, src_gray, CV_BGR2GRAY);
+	imshow("Gray (OpenCV)", src_gray);
+
+	/// Generate grad_x and grad_y
+	Mat grad_x, grad_y;
+	Mat abs_grad_x, abs_grad_y;
+
+	/// Gradient X
+	//Scharr( src_gray, grad_x, ddepth, 1, 0, scale, delta, BORDER_DEFAULT );
+	Sobel(src_gray, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT);
+	convertScaleAbs(grad_x, abs_grad_x);
+
+	/// Gradient Y
+	//Scharr( src_gray, grad_y, ddepth, 0, 1, scale, delta, BORDER_DEFAULT );
+	Sobel(src_gray, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT);
+	convertScaleAbs(grad_y, abs_grad_y);
+
+	/// Total Gradient (approximate)
+	addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0, mat);
+	imshow("Sobel (OpenCV)", mat);
+	//test2 = ComputerVision::Sobel(test);
 	//imshow("Sobel", test2.GetMat());
 	waitKey();
 /*	VideoCapture cap = StartCapture();
@@ -118,7 +157,7 @@ int main() {
 		test = Image(frame);
 
 		imshow("test1", test.GetMat());
-		test2 = CV::Sobel(test);
+		test2 = ComputerVision::Sobel(test);
 		imshow("test2", test2.GetMat());
 		waitKey(30);
 	}

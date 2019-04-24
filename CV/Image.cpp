@@ -4,8 +4,9 @@
 using namespace std;
 using namespace cv;
 
-//Реализация
+//Realization
 
+//Default constuctor
 Image::Image() {
 
 	this->data = NULL;
@@ -13,6 +14,7 @@ Image::Image() {
 	this->rows = 0;
 }
 
+//constructor from cv::Mat, type mean representation (ntfc,red, green, blue)
 Image::Image(cv::Mat img, int type) {
 
 	this->rows = img.rows;
@@ -57,6 +59,7 @@ Image::Image(cv::Mat img, int type) {
 	}
 }
 
+//copy constructor
 Image::Image(const Image& other) {
 
 	this->cols = other.cols;
@@ -66,6 +69,7 @@ Image::Image(const Image& other) {
 	copy(other.data, &(other.data[rows * cols]), stdext::checked_array_iterator<uchar*>(this->data, rows*cols));
 }
 
+//create and get cv::Mat
 Mat Image::GetMat() const {
 
 	if (this->IsEmpty()) {
@@ -81,12 +85,22 @@ Mat Image::GetMat() const {
 	}
 }
 
+//normalize image data
+void Image::NormalizeImage() {
+
+	uchar* temp = this->GetNormalizeDataUC();
+	delete[] data;
+	data = temp;
+}
+
+//destructor
 Image::~Image() {
 
 	if (!this->IsEmpty())
 		delete[] data;
 }
 
+//print data in console
 void Image::Print() const {
 
 	int step;
@@ -111,6 +125,7 @@ void Image::Print() const {
 	cout << endl;
 }
 
+//check, contain image correct data or not
 bool Image::IsEmpty() const {
 
 	if (this->cols > 0 && this->rows > 0 && this->data != NULL)
@@ -119,6 +134,7 @@ bool Image::IsEmpty() const {
 		return true;
 }
 
+//swap
 void Image::Swap(Image & other) {
 
 	// swap all the members (and base subobject, if applicable) with other
@@ -130,25 +146,29 @@ void Image::Swap(Image & other) {
 	swap(this->cols, other.cols);
 }
 
+//get number rows
 int Image::GetRowsNumber()  const {
 
 	return this->rows;
 }
 
+//get number columns
 int Image::GetColsNumber() const {
 
 	return this->cols;
 }
 
-int Image::GetSize() const
-{
+//get number pixels
+int Image::GetSize() const {
+
 	return rows*cols;
 }
 
+//get image (copy!) data 
 uchar* Image::GetData() const {
 
 	if (cols*rows == 0) {
-	
+
 		return NULL;
 	}
 	else {
@@ -160,11 +180,13 @@ uchar* Image::GetData() const {
 	}
 }
 
+//get image normalize data (uchar 0-255)
 uchar* Image::GetNormalizeDataUC()  const {
 
 	return LinearNormalization<uchar, uchar>(rows*cols, this->data, 0, 255);
 }
 
+//get image normalize data (double 0-1)
 double* Image::GetNormalizeDataF()  const {
 
 	/*int max = this->GetMaxValue();
@@ -181,14 +203,16 @@ double* Image::GetNormalizeDataF()  const {
 	return LinearNormalization<uchar, double>(rows*cols, this->data, 0, 1);
 }
 
+//get [row][col] value
 uchar Image::GetValueAt(int row, int col)  const {
 
 	return this->data[row*this->cols + col];
 }
 
-uchar Image::GetMinValue()  const {
+//get min pixel value
+double Image::GetMinValue()  const {
 	
-	uchar min = 255;
+	double min = data[0];
 
 	int size = rows * cols;
 	for (int i = 0; i < size; i++) {
@@ -200,9 +224,10 @@ uchar Image::GetMinValue()  const {
 	return min;
 }
 
-uchar Image::GetMaxValue()  const {
+//get max pixel value
+double Image::GetMaxValue()  const {
 
-	uchar max = 0;
+	double max = data[0];
 
 	int size = rows * cols;
 	for (int i = 0; i < size; i++) {
@@ -214,6 +239,7 @@ uchar Image::GetMaxValue()  const {
 	return max;
 }
 
+//set [row][col] value
 void Image::SetValueAt(int row, int col, uchar value) {
 
 	this->data[row*this->cols + col] = value;
@@ -225,6 +251,8 @@ Image& Image::operator=(Image other) {
 	return *this;
 }
 
+
+//need modify!
 //вычитает одно изображение из другого
 //значения матрицы ограничены и приводятся к промежутку [0, 255]
 Image & Image::operator-(const Image & other) {

@@ -1,7 +1,7 @@
 #pragma once
 #include <opencv2/opencv.hpp>
 
-//Константы
+//Constant
 
 const int kRGB2GRAY_NTSC = 105;
 const int kRGB2GRAY_HDTV = 104;
@@ -9,9 +9,9 @@ const int kRED = 103;
 const int kGREEN = 102;
 const int kBLUE = 101;
 
-//Определение
+//Definition
 
-//Класс для хранения изображений
+//for store, get info and modify grayscale image data
 class Image {
 private:
 	uchar* data;		//матрица значений
@@ -27,8 +27,6 @@ public:
 	Image(int rows, int cols, T * matrix, bool normalize = false);	//конструктор на основе 1-D массива
 
 	Image& operator =(Image other);								//присвоение для ленивых
-	Image& operator -(const Image& other);						//вычитание для ленивых
-	Image& operator +(const Image& other);						//сложение для ленивых
 
 	//get
 	int GetRowsNumber() const;									//получить количество строк
@@ -38,8 +36,8 @@ public:
 	uchar* GetNormalizeDataUC() const;							//получить нормализованные данные типа uchar
 	double* GetNormalizeDataF() const;							//получить нормализованные данные типа double
 	uchar GetValueAt(int row, int col) const;					//получить значение в позиции [row, col]
-	uchar GetMinValue() const;									//получить минимальное значение
-	uchar GetMaxValue() const;									//получить максимальное значение
+	double GetMinValue() const;									//получить минимальное значение
+	double GetMaxValue() const;									//получить максимальное значение
 	cv::Mat GetMat() const;										//преобразовывет матрицу данных к другому типу данных
 
 	//set
@@ -50,11 +48,16 @@ public:
 	void Swap(Image& other);
 	template<typename srcT, typename dstT>
 	static dstT* LinearNormalization(int dataSize, srcT* data, dstT newMin, dstT newMax);	//функция для линейной нормализации
+	void NormalizeImage();										//Normalize image to 0-255 uchar
 
 	~Image();
+
+	//need modify!
+	Image& operator -(const Image& other);						//вычитание для ленивых
+	Image& operator +(const Image& other);						//сложение для ленивых
 };
 
-//реализация template функций
+//template function realization
 template <typename T>
 Image::Image(int rows, int cols, T** matrix, bool normalize) {
 
