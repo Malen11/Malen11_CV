@@ -11,13 +11,6 @@ struct Core {
 	double* data = NULL;
 };
 
-/*struct SeparableCore {
-
-	int k = 0;
-	double* dataX = NULL;
-	double* dataY = NULL;
-};*/
-
 //class, that contains CV functions
 class ComputerVision {
 private:
@@ -44,6 +37,16 @@ public:
 	template <typename T>
 	static double* ApplyFilterRaw(int rows, int cols, T* data, Core core, int interpolateType = kInterpolateZero);
 
+	//apply Gauss to Image
+	static Image Gauss(Image& img, double sigma, int k, int interpolateType = kInterpolateZero);
+
+	//apply Gauss to Image
+	static Image GaussDefault(Image& img, double sigma, int interpolateType = kInterpolateZero);
+
+	//apply Gauss to Image data (or array) 
+	template <typename T>
+	static double* GaussRaw(int rows, int cols, T* data, double sigma, int k, int interpolateType = kInterpolateZero);
+
 	//calculate virtual pixel for interpolation 
 	template <typename T>
 	static T GetVirtualPixel(int row, int col, int rows, int cols, T* data, int interpolateType = kInterpolateZero);
@@ -58,7 +61,6 @@ public:
 	//apply Sobel to Image data (or array) 
 	template <typename T>
 	static double* SobelRaw(int rows, int cols, T* data, int PartDerivativeType, int interpolateType = kInterpolateZero);
-
 
 	//need modify!
 	template <typename T>
@@ -99,6 +101,39 @@ double * ComputerVision::ApplyFilterRaw(int rows, int cols, T* data, Core core, 
 		}
 	}
 
+	return result;
+}
+
+template<typename T>
+double * ComputerVision::GaussRaw(int rows, int cols, T * data, double sigma, int k, int interpolateType) {
+	
+	double *temp = NULL, *result = NULL;
+
+	Core gaussX;
+	gaussX.xk = k;
+	gaussX.yk = 0;
+	gaussX.data = new double[2 * k + 1];
+
+	Core gaussY;
+	gaussY.xk = 0;
+	gaussY.yk = k;
+	gaussY.data = new double[2 * k + 1];
+
+	double PI = std::atan(1.0)*4;
+	double alpha = 1.0 / (sqrt(2 * PI)*sigma);
+	double val;
+	
+	for (int i = -k; i <= k; i++)
+		gaussX.data[k + i] = alpha * std::exp(-(i*i) / (2.0 * sigma * sigma));
+
+	for (int i = -k; i <= k; i++)
+		gaussY.data[k + i] = alpha * std::exp(-(i*i) / (2.0 * sigma * sigma));
+
+	temp = ApplyFilterRaw(rows, cols, data, gaussX, interpolateType);
+	result = ApplyFilterRaw(rows, cols, temp, gaussY, interpolateType);
+
+
+	delete[] temp;
 	return result;
 }
 

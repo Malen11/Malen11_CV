@@ -105,22 +105,25 @@ int main() {
 	Image test1(test.GetRowsNumber(), test.GetColsNumber(), ddata,true);
 	imshow("Normalize image", test1.GetMat());
 
-	Image test2;
+	Image test2, test3;
 
-	test2 = ComputerVision::Sobel(test1, ComputerVision::kPartDerivativeSobel,ComputerVision::kInterpolateBorder);
-	//test2.NormalizeImage();
-	imshow("Sobel", test2.GetMat());
+	test2 = ComputerVision::Sobel(test1, ComputerVision::kPartDerivativeSobel,ComputerVision::kInterpolateZero);
+	imshow("Sobel Before Gauss", test2.GetMat());
 
-	test2 = ComputerVision::Sobel(test1, ComputerVision::kPartDerivativePrewitt, ComputerVision::kInterpolateReflection);
-	//test2.NormalizeImage();
-	imshow("Prewitt", test2.GetMat());
+	test3 = ComputerVision::GaussDefault(test, 2, ComputerVision::kInterpolateZero);
+	imshow("Gauss", test3.GetMat());
 
-	test2 = ComputerVision::Sobel(test1, ComputerVision::kPartDerivativeScharr, ComputerVision::kInterpolateWrap);
-	//test2.NormalizeImage();
-	imshow("Scharr", test2.GetMat());
+	test2 = ComputerVision::Sobel(test3, ComputerVision::kPartDerivativeScharr, ComputerVision::kInterpolateZero);
+	imshow("Sobel After Gauss", test2.GetMat());
+
+	//test2 = ComputerVision::Sobel(test1, ComputerVision::kPartDerivativePrewitt, ComputerVision::kInterpolateReflection);
+	//imshow("Prewitt", test2.GetMat());
+
+	//test2 = ComputerVision::Sobel(test1, ComputerVision::kPartDerivativeScharr, ComputerVision::kInterpolateWrap);
+	//imshow("Scharr", test2.GetMat());
 
 
-	int scale = 1; 
+	/*int scale = 1; 
 	int delta = 0;
 	int ddepth = CV_16S;
 	
@@ -147,9 +150,10 @@ int main() {
 	addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0, mat);
 	imshow("Sobel (OpenCV)", mat);
 	//test2 = ComputerVision::Sobel(test);
-	//imshow("Sobel", test2.GetMat());
-	waitKey();
-/*	VideoCapture cap = StartCapture();
+	//imshow("Sobel", test2.GetMat());*/
+
+/*	
+VideoCapture cap = StartCapture();
 
 	while (true) {
 
@@ -162,5 +166,8 @@ int main() {
 		waitKey(30);
 	}
 	*/
+
+	waitKey();
+
 	return 0;
 }
