@@ -85,12 +85,55 @@ Mat Image::GetMat() const {
 	}
 }
 
+Image Image::GetDownsampleImage(int scale) const {
+
+	Image result;
+	result.cols = this->cols / scale;
+	result.rows = this->rows / scale;
+	result.data = new uchar[result.rows*result.cols];
+
+	for (int i = 0; i < result.rows; i++) {
+		for (int j = 0; j < result.cols; j++) {
+			result.data[i*result.cols + j] = this->data[(i*scale)*this->cols + (j*scale)];
+		}
+	}
+
+	return result;
+}
+
 //normalize image data
 void Image::NormalizeImage() {
 
 	uchar* temp = this->GetNormalizeDataUC();
 	delete[] data;
 	data = temp;
+}
+
+void Image::DownsampleImage(int scale) {
+
+	Image temp = this->GetDownsampleImage(scale);
+	Swap(temp);
+}
+
+Image Image::AbsoluteDiff(const Image& img1, const Image&img2) {
+	
+	if (img1.rows == img2.rows && img1.cols == img2.cols) {
+
+		Image result;
+		result.cols = img1.cols;
+		result.rows = img1.rows;
+		result.data = new uchar[result.rows*result.cols];
+
+		int size = result.rows * result.cols;
+		for (int i = 0; i < size; i++) {
+			result.data[i] = std::abs(img1.data[i] - img2.data[i])%255;
+		}
+
+		return result;
+	}
+	else {
+		throw std::out_of_range("Images dimensions not match");
+	}
 }
 
 //destructor

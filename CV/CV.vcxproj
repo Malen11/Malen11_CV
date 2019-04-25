@@ -152,6 +152,7 @@
   <ItemGroup>
     <ClInclude Include="ComputerVision.hpp" />
     <ClInclude Include="Image.hpp" />
+    <ClInclude Include="ImagePyramid.hpp" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
@@ -159,6 +160,7 @@
     <ClCompile Include="ComputerVision.cpp" />
     <ClCompile Include="Image.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="ImagePyramid.cpp" />
     <ClCompile Include="stdafx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>

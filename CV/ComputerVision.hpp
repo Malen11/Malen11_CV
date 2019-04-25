@@ -30,6 +30,8 @@ public:
 	static const int kPartDerivativeXScharr = 308;		//Partial Derivative X (Scharr)
 	static const int kPartDerivativeYScharr = 309;		//Partial Derivative Y (Scharr)
 	
+	static const double PI() { return std::atan(1.0) * 4;}
+
 	//apply filter (calculate data*core) to Image
 	static Image ApplyFilter(Image& img, Core core, int type);	
 
@@ -37,6 +39,13 @@ public:
 	template <typename T>
 	static double* ApplyFilterRaw(int rows, int cols, T* data, Core core, int interpolateType = kInterpolateZero);
 
+	//apply Canny to Image
+	static Image Canny(Image& img, double sigma, int k, double lowThreshhold, double highThreshhold, int interpolateType = kInterpolateZero);
+	
+	//apply Canny to Image data (or array) 
+	template <typename T>
+	static double* CannyRaw(int rows, int cols, T* data, double sigma, int k, double lowThreshhold, double highThreshhold, int interpolateType = kInterpolateZero);
+	
 	//apply Gauss to Image
 	static Image Gauss(Image& img, double sigma, int k, int interpolateType = kInterpolateZero);
 
@@ -50,17 +59,22 @@ public:
 	//calculate virtual pixel for interpolation 
 	template <typename T>
 	static T GetVirtualPixel(int row, int col, int rows, int cols, T* data, int interpolateType = kInterpolateZero);
-	
+
+	template<typename srcT, typename dstT>
+	static dstT* LinearNormalization(int dataSize, srcT* data, dstT newMin, dstT newMax);	//функция для линейной нормализации
+
 	//calculate Partial Derivative for Image data
 	template <typename T>
 	static double* PartDerivative(int rows, int cols, T* data, int PartDerivativeType, int interpolateType = kInterpolateZero);
-	
+
 	//apply Sobel to Image
 	static Image Sobel(Image& img, int PartDerivativeType, int interpolateType = kInterpolateZero);
 	
 	//apply Sobel to Image data (or array) 
 	template <typename T>
 	static double* SobelRaw(int rows, int cols, T* data, int PartDerivativeType, int interpolateType = kInterpolateZero);
+
+	///////////////////////////////////////////////
 
 	//need modify!
 	template <typename T>
@@ -105,6 +119,105 @@ double * ComputerVision::ApplyFilterRaw(int rows, int cols, T* data, Core core, 
 }
 
 template<typename T>
+double * ComputerVision::CannyRaw(int rows, int cols, T * data, double sigma, int k, double lowThreshhold, double highThreshhold, int interpolateType) {
+	
+	double* temp;
+	double* gaussImage = GaussRaw(rows, cols, data, sigma, k, interpolateType);
+
+	//double* G = SobelRaw(rows, cols, data, kPartDerivativeSobel);
+	double* Gx = PartDerivative(rows, cols, gaussImage, kPartDerivativeXSobel);
+	double* Gy = PartDerivative(rows, cols, gaussImage, kPartDerivativeYSobel);
+
+	int size = rows * cols;
+	double* G = new double[size];
+	int* Th = new int[size];
+
+	for (int i = 0; i < size; i++) {
+
+		G[i] = sqrt(Gx[i] * Gx[i] + Gy[i] * Gy[i]);
+		Th[i] = 45 * (int)round(4 * atan2(Gy[i], Gx[i]) / PI());
+	}
+
+	bool* extremum = new bool[size];
+	int pos;
+	double neighbourA, neighbourB;
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+
+
+			pos = i * cols + j;
+
+			if (i == 0 || i == rows - 1 || j == 0 || j == cols - 1) {
+				extremum[pos] = false;
+			}
+			else {
+				pos = i * cols + j;
+				neighbourA = 0;
+				neighbourB = 0;
+
+				switch (Th[pos]) {
+
+				case 0:
+				case 180:
+				case -180:
+
+					if (j != 0)
+						neighbourA = G[pos - 1];
+					if (j != cols - 1)
+						neighbourB = G[pos + 1];
+					break;
+
+				case 90:
+				case -90:
+
+					if (i != 0)
+						neighbourA = G[pos - cols];
+					if (i != rows - 1)
+						neighbourB = G[pos + cols];
+					break;
+
+				case 45:
+				case -135:
+
+					if (i != 0 && j != cols - 1)
+						neighbourA = G[pos - cols + 1];
+					if (i != rows - 1 && j != 0)
+						neighbourA = G[pos + cols - 1];
+					break;
+
+				case -45:
+				case 135:
+
+					if (i != 0 && j != 0)
+						neighbourA = G[pos - cols - 1];
+					if (i != rows - 1 && j != cols - 1)
+						neighbourA = G[pos + cols + 1];
+					break;
+
+				default:
+					break;
+				}
+
+				extremum[pos] = (G[pos] > neighbourA && G[pos] > neighbourB);
+			}
+		}
+	}
+
+	temp = LinearNormalization<double, double>(size, G, 0, 100);
+
+	double* result = new double[size];
+	for (int i = 0; i < size; i++) {
+
+		if (extremum[i] && temp[i] > highThreshhold)
+			result[i] = 1;
+		else
+			result[i] = 0;
+	}
+
+	return result;
+}
+
+template<typename T>
 double * ComputerVision::GaussRaw(int rows, int cols, T * data, double sigma, int k, int interpolateType) {
 	
 	double *temp = NULL, *result = NULL;
@@ -119,8 +232,7 @@ double * ComputerVision::GaussRaw(int rows, int cols, T * data, double sigma, in
 	gaussY.yk = k;
 	gaussY.data = new double[2 * k + 1];
 
-	double PI = std::atan(1.0)*4;
-	double alpha = 1.0 / (sqrt(2 * PI)*sigma);
+	double alpha = 1.0 / (sqrt(2 * PI())*sigma);
 	double val;
 	
 	for (int i = -k; i <= k; i++)
@@ -178,6 +290,39 @@ T ComputerVision::GetVirtualPixel(int row, int col, int rows, int cols, T* data,
 	}
 
 	return NULL;
+}
+
+template<typename srcT, typename dstT>
+dstT * ComputerVision::LinearNormalization(int dataSize, srcT * data, dstT newMin, dstT newMax) {
+
+	if (dataSize != 0 && data != NULL) {
+
+		double min = data[0], max = data[0], k;
+
+		for (int i = 0; i < dataSize; i++) {
+			if (data[i] > max) {
+				max = data[i];
+			}
+
+			if (data[i] < min) {
+				min = data[i];
+			}
+		}
+
+		k = (newMax - newMin) / (max - min);
+
+		dstT* result = new dstT[dataSize];
+
+		for (int i = 0; i < dataSize; i++) {
+
+			result[i] = (dstT)((data[i] - min)*k + newMin);
+		}
+
+		return result;
+	}
+	else {
+		return NULL;
+	}
 }
 
 template <typename T>

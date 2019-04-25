@@ -101,57 +101,44 @@ int main() {
 	Image test(mat);
 	imshow("Base image", test.GetMat());
 	
-	double* ddata = test.GetNormalizeDataF();
-	Image test1(test.GetRowsNumber(), test.GetColsNumber(), ddata,true);
-	imshow("Normalize image", test1.GetMat());
+	//double* ddata = test.GetNormalizeDataF();
+	//Image test1(test.GetRowsNumber(), test.GetColsNumber(), ddata,true);
+	//imshow("Normalize image", test1.GetMat());
 
-	Image test2, test3;
+	Image test2, test3, test4, test5;
 
-	test2 = ComputerVision::Sobel(test1, ComputerVision::kPartDerivativeSobel,ComputerVision::kInterpolateZero);
-	imshow("Sobel Before Gauss", test2.GetMat());
+	//lab 1
+	/*test2 = ComputerVision::Sobel(test, ComputerVision::kPartDerivativeSobel,ComputerVision::kInterpolateZero);
+	imshow("Sobel Before Gauss (Sobel)", test2.GetMat());
+
+	test4 = ComputerVision::Sobel(test, ComputerVision::kPartDerivativeScharr, ComputerVision::kInterpolateZero);
+	imshow("Sobel Before Gauss (Scharr)", test4.GetMat());
+
+	test5 = test5.AbsoluteDiff(test2, test4);
+	test5.NormalizeImage();
+	imshow("Sobel Before Gauss (AbsDiff Sobel, Scharr)", test5.GetMat());
 
 	test3 = ComputerVision::GaussDefault(test, 2, ComputerVision::kInterpolateZero);
 	imshow("Gauss", test3.GetMat());
 
 	test2 = ComputerVision::Sobel(test3, ComputerVision::kPartDerivativeScharr, ComputerVision::kInterpolateZero);
 	imshow("Sobel After Gauss", test2.GetMat());
-
-	//test2 = ComputerVision::Sobel(test1, ComputerVision::kPartDerivativePrewitt, ComputerVision::kInterpolateReflection);
-	//imshow("Prewitt", test2.GetMat());
-
-	//test2 = ComputerVision::Sobel(test1, ComputerVision::kPartDerivativeScharr, ComputerVision::kInterpolateWrap);
-	//imshow("Scharr", test2.GetMat());
-
-
-	/*int scale = 1; 
-	int delta = 0;
-	int ddepth = CV_16S;
+	*/
 	
-	Mat src_gray;
-	/// Convert it to gray
-	cvtColor(mat, src_gray, CV_BGR2GRAY);
-	imshow("Gray (OpenCV)", src_gray);
+	//lab 2
+	/*
+	ImagePyramid imgPyr(test, 4, 0.5, 1.6);
 
-	/// Generate grad_x and grad_y
-	Mat grad_x, grad_y;
-	Mat abs_grad_x, abs_grad_y;
+	for (int i = 0; i < imgPyr.GetOctavesNum(); i++) {
+		for (int j = 0; j < imgPyr.GetLayersNum(); j++) {
+			imshow("Octave: "+std::to_string(i)+" Layer: "+ std::to_string(j), imgPyr.GetImage(i, j).GetMat());
+		}
+	}*/
 
-	/// Gradient X
-	//Scharr( src_gray, grad_x, ddepth, 1, 0, scale, delta, BORDER_DEFAULT );
-	Sobel(src_gray, grad_x, ddepth, 1, 0, 3, scale, delta, BORDER_DEFAULT);
-	convertScaleAbs(grad_x, abs_grad_x);
-
-	/// Gradient Y
-	//Scharr( src_gray, grad_y, ddepth, 0, 1, scale, delta, BORDER_DEFAULT );
-	Sobel(src_gray, grad_y, ddepth, 0, 1, 3, scale, delta, BORDER_DEFAULT);
-	convertScaleAbs(grad_y, abs_grad_y);
-
-	/// Total Gradient (approximate)
-	addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0, mat);
-	imshow("Sobel (OpenCV)", mat);
-	//test2 = ComputerVision::Sobel(test);
-	//imshow("Sobel", test2.GetMat());*/
-
+	//lab 3
+	test2 = ComputerVision::Canny(test, 2, 6, 10, 10);
+	imshow("Canny", test2.GetMat());
+	//video 
 /*	
 VideoCapture cap = StartCapture();
 

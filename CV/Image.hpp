@@ -39,6 +39,7 @@ public:
 	double GetMinValue() const;									//получить минимальное значение
 	double GetMaxValue() const;									//получить максимальное значение
 	cv::Mat GetMat() const;										//преобразовывет матрицу данных к другому типу данных
+	Image GetDownsampleImage(int scale) const;
 
 	//set
 	void SetValueAt(int row, int col, uchar value);				// установить значение value в позиции [row, col]
@@ -49,6 +50,8 @@ public:
 	template<typename srcT, typename dstT>
 	static dstT* LinearNormalization(int dataSize, srcT* data, dstT newMin, dstT newMax);	//функция для линейной нормализации
 	void NormalizeImage();										//Normalize image to 0-255 uchar
+	void DownsampleImage(int scale);
+	Image AbsoluteDiff(const Image& img1, const Image&img2);
 
 	~Image();
 
@@ -137,7 +140,8 @@ static dstT * Image::LinearNormalization(int dataSize, srcT* data, dstT newMin, 
 			if (data[i] > max) {
 				max = data[i];
 			}
-			else if (data[i] < min) {
+			
+			if (data[i] < min) {
 				min = data[i];
 			}
 		}
