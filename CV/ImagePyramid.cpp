@@ -28,23 +28,28 @@ ImagePyramid::ImagePyramid(Image img, int octavesNum, int layersNum, double sigm
 	this->layersNum = layersNum;
 	this->imagesNum = octavesNum * layersNum;
 	this->images = new Image[imagesNum];
-	this->sigmaInterval = std::pow(2, 1 / layersNum);
+	this->sigmas = new double[imagesNum];
+	this->sigmaInterval = std::pow(2, 1. / layersNum);
 	
 	double sigma;
 
 	for (int i = 0; i < octavesNum; i++) {
 
-		if (i == 0)
+		if (i == 0) {
 			images[0] = ComputerVision::GaussDefault(img, sqrt(sigma0*sigma0 - sigmaA * sigmaA));
-		else
-			images[i*layersNum] = images[i*layersNum-1].GetDownsampleImage(2);
-
+			sigmas[0] = sigma0;
+		}
+		else {
+			images[i*layersNum] = images[i*layersNum - 1].GetDownsampleImage(2);
+			sigmas[i*layersNum] = 2 * sigmas[(i - 1)*layersNum];
+		}
 		sigma = sigma0;
 		for (int j = 1; j < layersNum; j++) {
 
-			images[i*layersNum + j] = ComputerVision::GaussDefault(images[i*layersNum + j - 1], sigma);
+			images[i*layersNum + j] = ComputerVision::GaussDefault(images[i*layersNum + j - 1], sqrt(sigma*sigma*sigmaInterval*sigmaInterval - sigma * sigma));
 
 			sigma *= sigmaInterval;
+			sigmas[i*layersNum + j] = sigma;
 		}
 	}
 }
@@ -87,4 +92,28 @@ int ImagePyramid::GetImagesNum() const {
 double ImagePyramid::GetSigmaInterval() const {
 
 	return sigmaInterval;
+}
+
+Image ImagePyramid::L(double sigma) {
+	/*
+	int k=0;
+	double tempSigma = sigma;
+
+	while (tempSigma > sigmaInterval) {
+		tempSigma /= sigmaInterval;
+		++k;
+	}
+
+	int octave = k / layersNum;
+	int layer = k % layersNum;
+	//double sigmaPos = sigma0;
+	*/
+
+	for (int i = 0; i < imagesNum; i++) {
+
+		//sig
+	}
+	
+
+	return GetImage(0,0);
 }

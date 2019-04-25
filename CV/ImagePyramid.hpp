@@ -10,6 +10,7 @@ private:
 	double sigma0;
 
 	Image* images;
+	double* sigmas;
 
 	double sigmaInterval;
 	int imagesNum;
@@ -24,5 +25,7 @@ public:
 	int GetLayersNum() const;
 	int GetImagesNum() const;
 	double GetSigmaInterval() const;
+
+	Image L(double sigma);
 };
 

@@ -346,11 +346,11 @@ double * ComputerVision::SobelRaw(int rows, int cols, T* data, int PartDerivativ
 		temp2 = PartDerivative(rows, cols, data, kPartDerivativeYScharr, interpolateType);
 	}
 
-	Image test1(rows, cols, temp1, true);
-	imshow("Gx image", test1.GetMat());
+	//Image test1(rows, cols, temp1, true);
+	//imshow("Gx image", test1.GetMat());
 
-	Image test2(rows, cols, temp2, true);
-	imshow("Gy image", test2.GetMat());
+	//Image test2(rows, cols, temp2, true);
+	//imshow("Gy image", test2.GetMat());
 
 	int size = rows * cols;
 	result = new double[size];
