@@ -3,6 +3,7 @@
 
 //definition 
 
+//Point
 struct Dot {
 
 	int x;
@@ -41,6 +42,8 @@ public:
 	static const int kHarrisResponseForstner = 403;		//response for Harris (Förstner and Gülch)
 	
 	static const double PI() { return std::atan(1.0) * 4;}
+
+	static std::vector<Dot> ANMS(std::vector<Dot> points, int rows, int cols, double* responseMap, int num, double c=0.9);
 
 	//apply filter (calculate data*core) to Image
 	static Image ApplyFilter(Image& img, Core core, int type);	
@@ -385,9 +388,9 @@ std::vector<Dot> ComputerVision::HarrisRaw(int rows, int cols, T * data, int wk,
 		}
 	}
 
-	double* lambda = HarrisResponse(rows, cols, A, B, C, ComputerVision::kHarrisResponseForstner);
+	double* responseMap = HarrisResponse(rows, cols, A, B, C, ComputerVision::kHarrisResponseForstner);
 
-	Image test(rows, cols, lambda, true);
+	Image test(rows, cols, responseMap, true);
 	test.GetMaxValue();
 	cv::imshow("test", test.GetMat());
 
@@ -396,10 +399,6 @@ std::vector<Dot> ComputerVision::HarrisRaw(int rows, int cols, T * data, int wk,
 	bool isPoint;
 	int r;
 
-	if (ANMSNeeded == -1)
-		r = localMinK;
-	else
-		r = 0;
 
 	for (int i = 0; i < rows; i++) {
 		for (int j = 0; j < cols; j++) {
@@ -407,12 +406,12 @@ std::vector<Dot> ComputerVision::HarrisRaw(int rows, int cols, T * data, int wk,
 			isPoint = true;
 			pos = i * cols + j;
 
-			if (lambda[pos] > Threshold) {
+			if (responseMap[pos] > Threshold) {
 
-				for (int u = -r; u <= r && isPoint; u++) {
-					for (int v = -r; v <= r && isPoint; v++) {
+				for (int u = -localMinK; u <= localMinK && isPoint; u++) {
+					for (int v = -localMinK; v <= localMinK && isPoint; v++) {
 
-						if ((r >= sqrt(pow(u, 2) + pow(v, 2))) && !(u == 0 && v == 0) && lambda[pos] <= GetVirtualPixel<T>(i + u, j + v, rows, cols, lambda, kInterpolateZero))
+						if ((localMinK >= sqrt(pow(u, 2) + pow(v, 2))) && !(u == 0 && v == 0) && responseMap[pos] <= GetVirtualPixel<T>(i + u, j + v, rows, cols, responseMap, kInterpolateZero))
 							isPoint = false;
 					}
 				}
@@ -430,16 +429,15 @@ std::vector<Dot> ComputerVision::HarrisRaw(int rows, int cols, T * data, int wk,
 			}
 		}
 	}
+		
+	if (ANMSNeeded == -1) {
 
-	/*do {
+		return result;
+	}
+	else {
 
-		result.clear();
-		r++;
-
-	} while (result.size() > ANMSNeeded && ANMSNeeded != -1);
-	*/
-
-	return result;
+		return ANMS(result, rows,cols, responseMap, ANMSNeeded);
+	}
 }
 
 template<typename srcT, typename dstT>

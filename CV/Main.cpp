@@ -110,13 +110,18 @@ cv::Mat MatPlotPoints(Image& img, vector<Dot> points, int color = 0) {
 //C:\Users\alist\Desktop\Bikesgray.jpg
 //C:\Users\alist\Desktop\obj.jpg
 //C:\Users\alist\Desktop\Lena2.jpg
+//C:\Users\alist\Desktop\LenaRotate.jpg
+//C:\Users\alist\Desktop\LenaRotate2.jpg
 //C:\Users\alist\Desktop\Valve_original_(1).PNG
 int main() {
 
 	Mat mat = LoadImage();
+	Mat mat1 = LoadImage();
 
 	Image test(mat);
 	imshow("Base image", test.GetMat());
+	Image test1(mat1);
+	imshow("Base image 1", test1.GetMat());
 	
 	//double* ddata = test.GetNormalizeDataF();
 	//Image test1(test.GetRowsNumber(), test.GetColsNumber(), ddata,true);
@@ -171,8 +176,20 @@ int main() {
 	//imshow("Canny", test2.GetMat());
 
 	test2 = ComputerVision::GaussDefault(test, 1);
-	vector<Dot> points = ComputerVision::Harris(test,3,3,0.03);
-	imshow("Harris Points", MatPlotPoints(test, points));
+	vector<Dot> pointsThresh = ComputerVision::Harris(test,3,3,0.03);
+	imshow("Harris Points (Thresh)", MatPlotPoints(test, pointsThresh));
+
+	vector<Dot> pointsANMS = ComputerVision::Harris(test, 3, 3, 0.03, 40);
+	imshow("Harris Points (ANMS)", MatPlotPoints(test, pointsANMS));
+
+
+	test3 = ComputerVision::GaussDefault(test1, 1);
+	pointsThresh = ComputerVision::Harris(test1, 3, 3, 0.03);
+	imshow("Harris Points 1 (Thresh)", MatPlotPoints(test1, pointsThresh));
+
+	pointsANMS = ComputerVision::Harris(test1, 3, 3, 0.03, 40);
+	imshow("Harris Points 1 (ANMS)", MatPlotPoints(test1, pointsANMS));
+	
 	//vector<Dot> points = ComputerVision::Moravec(test, 3, 1,3,0.02);
 	//imshow("Moravec Points", MatPlotPoints(test, points));
 
