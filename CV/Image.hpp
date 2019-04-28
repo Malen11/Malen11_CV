@@ -39,6 +39,7 @@ public:
 	double GetMinValue() const;									//получить минимальное значение
 	double GetMaxValue() const;									//получить максимальное значение
 	cv::Mat GetMat() const;										//преобразовывет матрицу данных к другому типу данных
+	//std::vector<cv::Point> GetPoints(int Threshold = 255) const;
 	Image GetDownsampleImage(int scale) const;
 
 	//set

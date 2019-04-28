@@ -1,7 +1,13 @@
-#pragma once
+﻿#pragma once
 #include "Image.hpp"
 
 //definition 
+
+struct Dot {
+
+	int x;
+	int y;
+};
 
 //Core (for filter's functions)
 struct Core {
@@ -29,6 +35,10 @@ public:
 	static const int kPartDerivativeScharr = 307;		//Partial Derivative (Scharr)
 	static const int kPartDerivativeXScharr = 308;		//Partial Derivative X (Scharr)
 	static const int kPartDerivativeYScharr = 309;		//Partial Derivative Y (Scharr)
+
+	static const int kHarrisResponseDirect = 401;		//response for Harris (Direct by calculate own numbers)
+	static const int kHarrisResponseBase = 402;			//response for Harris (Base with k)
+	static const int kHarrisResponseForstner = 403;		//response for Harris (Förstner and Gülch)
 	
 	static const double PI() { return std::atan(1.0) * 4;}
 
@@ -45,7 +55,10 @@ public:
 	//apply Canny to Image data (or array) 
 	template <typename T>
 	static double* CannyRaw(int rows, int cols, T* data, double sigma, int k, double lowThreshhold, double highThreshhold, int interpolateType = kInterpolateZero);
-	
+
+	//create Gauss core
+	static Core CreateGaussCore(double sigma, int k);
+
 	//apply Gauss to Image
 	static Image Gauss(Image& img, double sigma, int k, int interpolateType = kInterpolateZero);
 
@@ -59,9 +72,26 @@ public:
 	//calculate virtual pixel for interpolation 
 	template <typename T>
 	static T GetVirtualPixel(int row, int col, int rows, int cols, T* data, int interpolateType = kInterpolateZero);
+	
+	//apply Harris to Image
+	static std::vector<Dot> Harris(Image& img, int wk, int localMinK, double Threshold, int ANMSNeeded = -1, int PartDerivativeType = kPartDerivativeSobel);
+
+	//apply Harris to Image data (or array) 
+	template <typename T>
+	static std::vector<Dot> HarrisRaw(int rows, int cols, T* data, int wk, int localMinK, double Threshold, int ANMSNeeded = -1, int PartDerivativeType= kPartDerivativeSobel);
+
+	//calculate response for Harris
+	static double* HarrisResponse(int rows, int cols, double* A, double* B, double* C, int harrisResponseType = kHarrisResponseBase);
 
 	template<typename srcT, typename dstT>
-	static dstT* LinearNormalization(int dataSize, srcT* data, dstT newMin, dstT newMax);	//������� ��� �������� ������������
+	static dstT* LinearNormalization(int dataSize, srcT* data, dstT newMin, dstT newMax);	//функция для линейной нормализации
+	
+	//apply Moravec to Image data (or array) //apply Sobel to Image
+	static std::vector<Dot> Moravec(Image& img, int wk, int d, int p, double Threshold);
+
+	//apply Moravec to Image data (or array) 
+	template <typename T>
+	static std::vector<Dot> MoravecRaw(int rows, int cols, T* data, int wk, int d, int p, double Threshold);
 
 	//calculate Partial Derivative for Image data
 	template <typename T>
@@ -81,7 +111,9 @@ public:
 	static T* ExpandImgByZero(int rows, int cols, T* data, int addX, int addY);
 };
 
-//template function realization
+///////////////////////////////////
+// template function realization //
+///////////////////////////////////
 
 template <typename T>
 double * ComputerVision::ApplyFilterRaw(int rows, int cols, T* data, Core core, int type) {
@@ -118,6 +150,7 @@ double * ComputerVision::ApplyFilterRaw(int rows, int cols, T* data, Core core, 
 	return result;
 }
 
+/////////In work!!!
 template<typename T>
 double * ComputerVision::CannyRaw(int rows, int cols, T * data, double sigma, int k, double lowThreshhold, double highThreshhold, int interpolateType) {
 	
@@ -233,7 +266,7 @@ double * ComputerVision::GaussRaw(int rows, int cols, T * data, double sigma, in
 	gaussY.data = new double[2 * k + 1];
 
 	double alpha = 1.0 / (sqrt(2 * PI())*sigma);
-	double val;
+	//double val;
 	
 	for (int i = -k; i <= k; i++)
 		gaussX.data[k + i] = alpha * std::exp(-(i*i) / (2.0 * sigma * sigma));
@@ -252,8 +285,11 @@ double * ComputerVision::GaussRaw(int rows, int cols, T * data, double sigma, in
 template<typename T>
 T ComputerVision::GetVirtualPixel(int row, int col, int rows, int cols, T* data, int interpolateType) {
 
-	int trow = row - 1;
-	int tcol = col - 1;
+	if (row >= 0 && row < rows - 1 && col>=0 && col < cols - 1)
+		return data[row*cols + col];
+
+	int trow = row;
+	int tcol = col;
 
 	switch (interpolateType) {
 	case kInterpolateZero:
@@ -271,13 +307,13 @@ T ComputerVision::GetVirtualPixel(int row, int col, int rows, int cols, T* data,
 		
 		if (trow < 0)
 			trow = 0 - row;
-		else if (trow > rows)
-			trow = rows -1 - (trow - rows -1);
+		else if (trow >= rows)
+			trow = rows -1 - trow%(rows -1);
 
 		if (tcol < 0)
 			tcol = 0-col;
-		else if (tcol > cols)
-			tcol = cols - 1 - (tcol - col - 1);
+		else if (tcol >= cols)
+			tcol = cols - 1 - tcol%(cols - 1);
 
 		return data[trow*cols + tcol];
 
@@ -290,6 +326,120 @@ T ComputerVision::GetVirtualPixel(int row, int col, int rows, int cols, T* data,
 	}
 
 	return NULL;
+}
+
+template<typename T>
+std::vector<Dot> ComputerVision::HarrisRaw(int rows, int cols, T * data, int wk, int localMinK, double Threshold, int ANMSNeeded, int PartDerivativeType) {
+
+	int size = rows * cols;
+	int pos;
+
+	double *partDerX = NULL, *partDerY = NULL;
+
+	if (PartDerivativeType == kPartDerivativeSobel) {
+
+		partDerX = PartDerivative(rows, cols, data, kPartDerivativeXSobel, kInterpolateBorder);
+		partDerY = PartDerivative(rows, cols, data, kPartDerivativeYSobel, kInterpolateBorder);
+	}
+	else if (PartDerivativeType == kPartDerivativePrewitt) {
+
+		partDerX = PartDerivative(rows, cols, data, kPartDerivativeXPrewitt, kInterpolateBorder);
+		partDerY = PartDerivative(rows, cols, data, kPartDerivativeYPrewitt, kInterpolateBorder);
+	}
+	else if (PartDerivativeType == kPartDerivativeScharr) {
+
+		partDerX = PartDerivative(rows, cols, data, kPartDerivativeXScharr, kInterpolateBorder);
+		partDerY = PartDerivative(rows, cols, data, kPartDerivativeYScharr, kInterpolateBorder);
+	}
+
+	double* A = new double[size];
+	double* B = new double[size];
+	double* C = new double[size];
+
+	double Ix, Iy;
+	Core gaussCore = CreateGaussCore(wk / 3, wk);
+	int gpos;
+
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+
+			pos = i * cols + j;
+
+			A[pos] = 0;
+			B[pos] = 0;
+			C[pos] = 0;
+
+			for (int u = -wk; u <= wk; u++) {
+				for (int v = -wk; v <= wk; v++) {
+
+					gpos = (wk + u)*(2 * wk + 1) + (wk + v);
+
+					Ix = GetVirtualPixel<double>(i + u, j + v, rows, cols, partDerX, kInterpolateZero);
+					Iy = GetVirtualPixel<double>(i + u, j + v, rows, cols, partDerY, kInterpolateZero);
+
+					A[pos] += Ix * Ix*gaussCore.data[gpos];
+					B[pos] += Ix * Iy*gaussCore.data[gpos];
+					C[pos] += Iy * Iy*gaussCore.data[gpos];
+				}
+			}
+		}
+	}
+
+	double* lambda = HarrisResponse(rows, cols, A, B, C, ComputerVision::kHarrisResponseForstner);
+
+	Image test(rows, cols, lambda, true);
+	test.GetMaxValue();
+	cv::imshow("test", test.GetMat());
+
+	std::vector<Dot> result;
+	Dot point;
+	bool isPoint;
+	int r;
+
+	if (ANMSNeeded == -1)
+		r = localMinK;
+	else
+		r = 0;
+
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+
+			isPoint = true;
+			pos = i * cols + j;
+
+			if (lambda[pos] > Threshold) {
+
+				for (int u = -r; u <= r && isPoint; u++) {
+					for (int v = -r; v <= r && isPoint; v++) {
+
+						if ((r >= sqrt(pow(u, 2) + pow(v, 2))) && !(u == 0 && v == 0) && lambda[pos] <= GetVirtualPixel<T>(i + u, j + v, rows, cols, lambda, kInterpolateZero))
+							isPoint = false;
+					}
+				}
+			}
+			else {
+				isPoint = false;
+			}
+
+			if (isPoint) {
+
+				point.x = j;
+				point.y = i;
+
+				result.push_back(point);
+			}
+		}
+	}
+
+	/*do {
+
+		result.clear();
+		r++;
+
+	} while (result.size() > ANMSNeeded && ANMSNeeded != -1);
+	*/
+
+	return result;
 }
 
 template<typename srcT, typename dstT>
@@ -362,6 +512,111 @@ double * ComputerVision::SobelRaw(int rows, int cols, T* data, int PartDerivativ
 
 	delete[] temp1;
 	delete[] temp2;
+	return result;
+}
+
+template<typename T>
+std::vector<Dot> ComputerVision::MoravecRaw(int rows, int cols, T * data, int wk, int d, int p, double Threshold) {
+	
+	int size = rows*cols;
+	int pos;
+	
+	double** shifts = new double*[8];
+
+	//смещения, начиная с левого и против часовой
+	for (int i = 0; i < 8; i++) {
+
+		shifts[i] = new double[size];
+	}
+
+	//сначала считаем все смещения для каждого пикселя (их всего 8)
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+
+			pos = i * cols + j;
+
+			shifts[0][pos] = pow(data[pos] - GetVirtualPixel<T>(i, j + d, rows, cols, data, kInterpolateReflection), 2);
+			shifts[1][pos] = pow(data[pos] - GetVirtualPixel<T>(i - d, j + d, rows, cols, data, kInterpolateReflection), 2);
+			shifts[2][pos] = pow(data[pos] - GetVirtualPixel<T>(i - d, j, rows, cols, data, kInterpolateReflection), 2);
+			shifts[3][pos] = pow(data[pos] - GetVirtualPixel<T>(i - d, j - d, rows, cols, data, kInterpolateReflection), 2);
+			shifts[4][pos] = pow(data[pos] - GetVirtualPixel<T>(i, j - d, rows, cols, data, kInterpolateReflection), 2);
+			shifts[5][pos] = pow(data[pos] - GetVirtualPixel<T>(i + d, j - d, rows, cols, data, kInterpolateReflection), 2);
+			shifts[6][pos] = pow(data[pos] - GetVirtualPixel<T>(i + d, j, rows, cols, data, kInterpolateReflection), 2);
+			shifts[7][pos] = pow(data[pos] - GetVirtualPixel<T>(i + d, j + d, rows, cols, data, kInterpolateReflection), 2);
+		}
+	}
+
+	double temp;
+	double* s = new double[size];
+
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+
+			pos = i * cols + j;
+
+			for (int shift = 0; shift < 8; shift++) {
+
+				temp = 0;
+
+				for (int u = -wk; u <= wk; u++) {
+					for (int v = -wk; v <= wk; v++) {
+
+						if (u != 0 && v != 0)
+							temp += GetVirtualPixel<T>(i + u, j + v, rows, cols, shifts[shift], kInterpolateBorder);
+					}
+				}
+
+				if (shift == 0)
+					s[pos] = temp;
+				else
+					s[pos] = std::min(s[pos], temp);
+			}
+		}
+	}
+
+	//Image test(rows, cols, s, true);
+	//cv::imshow("test", test.GetMat());
+
+	std::vector<Dot> result;
+	Dot point;
+	bool isPoint;
+
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+
+			isPoint = true;
+			pos = i * cols + j;
+
+			if (s[pos] > Threshold) {
+
+				for (int u = -p; u <= p; u++) {
+					for (int v = -p; v <= p; v++) {
+
+						if (!(u == 0 && v == 0) && s[pos] <= GetVirtualPixel<T>(i + u, j + v, rows, cols, s, kInterpolateZero))
+							isPoint = false;
+					}
+				}
+			}
+			else {
+				isPoint = false;
+			}
+
+			if (isPoint) {
+
+				point.x = j;
+				point.y = i;
+
+				result.push_back(point);
+			}
+		}
+	}
+
+	for (int shift = 0; shift < 8; shift++)
+		delete[] shifts[shift];
+
+	delete[] shifts;
+	delete[] s;
+
 	return result;
 }
 

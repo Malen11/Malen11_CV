@@ -85,6 +85,18 @@ Mat Image::GetMat() const {
 	}
 }
 
+/*vector<cv::Point> Image::GetPoints(int Threshold) const {
+	vector<Point> points;
+
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+			if (data[i*cols + j] >= Threshold)
+				points.push_back(Point(i, j));
+		}
+	}
+	return points;
+}*/
+
 Image Image::GetDownsampleImage(int scale) const {
 
 	Image result;

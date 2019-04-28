@@ -32,24 +32,26 @@ ImagePyramid::ImagePyramid(Image img, int octavesNum, int layersNum, double sigm
 	this->sigmaInterval = std::pow(2, 1. / layersNum);
 	
 	double sigma;
+	int octavePos;
 
 	for (int i = 0; i < octavesNum; i++) {
 
+		octavePos = i * layersNum;
 		if (i == 0) {
-			images[0] = ComputerVision::GaussDefault(img, sqrt(sigma0*sigma0 - sigmaA * sigmaA));
+			images[0] = ComputerVision::GaussDefault(img, sqrt(sigma0*sigma0 - sigmaA * sigmaA),ComputerVision::kInterpolateReflection);
 			sigmas[0] = sigma0;
 		}
 		else {
-			images[i*layersNum] = images[i*layersNum - 1].GetDownsampleImage(2);
-			sigmas[i*layersNum] = 2 * sigmas[(i - 1)*layersNum];
+			images[octavePos] = images[octavePos - 1].GetDownsampleImage(2);
+			sigmas[octavePos] = 2 * sigmas[octavePos - layersNum];
 		}
 		sigma = sigma0;
 		for (int j = 1; j < layersNum; j++) {
 
-			images[i*layersNum + j] = ComputerVision::GaussDefault(images[i*layersNum + j - 1], sqrt(sigma*sigma*sigmaInterval*sigmaInterval - sigma * sigma));
+			images[octavePos + j] = ComputerVision::GaussDefault(images[octavePos + j - 1], sqrt(pow(sigma*sigmaInterval,2) - pow(sigma,2)), ComputerVision::kInterpolateReflection);
 
 			sigma *= sigmaInterval;
-			sigmas[i*layersNum + j] = sigma;
+			sigmas[octavePos + j] = sigma;
 		}
 	}
 }

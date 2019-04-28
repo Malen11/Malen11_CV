@@ -69,7 +69,7 @@ VideoCapture StartCapture() {
 Mat LoadImage() {
 
 	string input;
-	int selected;
+	//int selected;
 	cv::Mat img;
 	while (true) {
 
@@ -92,7 +92,24 @@ Mat LoadImage() {
 	return img;
 }
 
+/** function MatPlotPoints */
+cv::Mat MatPlotPoints(Image& img, vector<Dot> points, int color = 0) {
+
+	cv::Mat temp = img.GetMat();
+	cv::Mat colored;
+	cv::cvtColor(temp, colored, cv::COLOR_GRAY2BGR);
+	
+	for (vector<Dot>::iterator it = points.begin(); it != points.end(); it++) {
+
+		circle(colored, Point((*it).x, (*it).y), 1, CV_RGB(255, 0, 0), 3);
+	}
+
+	return colored;
+}
+
 //C:\Users\alist\Desktop\Bikesgray.jpg
+//C:\Users\alist\Desktop\obj.jpg
+//C:\Users\alist\Desktop\Lena2.jpg
 //C:\Users\alist\Desktop\Valve_original_(1).PNG
 int main() {
 
@@ -127,7 +144,7 @@ int main() {
 	*/
 	
 	//lab 2
-	
+/*
 	ImagePyramid imgPyr1(test, 4, 0.5, 1.5);
 
 	ImagePyramid imgPyr2(test, 2, 0.5, 1.5);
@@ -141,7 +158,7 @@ int main() {
 
 	imshow("2-4 layers", test4.AbsoluteDiff(test2, test3).GetMat());
 
-	/*for (int i = 0; i < imgPyr.GetOctavesNum(); i++) {
+	for (int i = 0; i < imgPyr.GetOctavesNum(); i++) {
 		for (int j = 0; j < imgPyr.GetLayersNum(); j++) {
 			cv::imwrite("pyramid/Octave " + std::to_string(i) + " Layer " + std::to_string(j)+".png", imgPyr.GetImage(i, j).GetMat());
 			//imshow("Octave: "+std::to_string(i)+" Layer: "+ std::to_string(j), imgPyr.GetImage(i, j).GetMat());
@@ -149,11 +166,16 @@ int main() {
 	}
 	*/
 
-	//imgPyr.L()
-
 	//lab 3
-	//test2 = ComputerVision::Canny(test, 2, 6, 10, 10);
+	//test2 = ComputerVision::Canny(test, 2, 6, 40, 30);
 	//imshow("Canny", test2.GetMat());
+
+	test2 = ComputerVision::GaussDefault(test, 1);
+	vector<Dot> points = ComputerVision::Harris(test,3,3,0.03);
+	imshow("Harris Points", MatPlotPoints(test, points));
+	//vector<Dot> points = ComputerVision::Moravec(test, 3, 1,3,0.02);
+	//imshow("Moravec Points", MatPlotPoints(test, points));
+
 	//video 
 /*	
 VideoCapture cap = StartCapture();
