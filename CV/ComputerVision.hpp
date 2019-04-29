@@ -3,13 +3,6 @@
 
 //definition 
 
-//Point
-struct Dot {
-
-	int x;
-	int y;
-};
-
 //Core (for filter's functions)
 struct Core {
 	
@@ -17,6 +10,36 @@ struct Core {
 	int yk = 0;
 	double* data = NULL;
 };
+
+//Point
+struct Dot {
+
+	int x;
+	int y;
+};
+
+//Column (for Histogram)
+struct Interval {
+
+	double data;
+	double midVal;
+};
+
+//Histogram (for descriptor)
+struct Histogram {
+
+	int intervalsNum;
+	Interval* intervals;
+};
+
+//Descriptor
+struct Descriptor {
+
+	Dot point;
+
+	Histogram* histograms;
+};
+
 
 //class, that contains CV functions
 class ComputerVision {
@@ -58,6 +81,12 @@ public:
 	//apply Canny to Image data (or array) 
 	template <typename T>
 	static double* CannyRaw(int rows, int cols, T* data, double sigma, int k, double lowThreshhold, double highThreshhold, int interpolateType = kInterpolateZero);
+	
+	//create Descriptor
+	static std::vector<Descriptor> CalculateDescriptors(Image& img, std::vector<Dot> points, int gridSizeK, int histogramSize, int intervalsNum);
+
+	//create Histogram
+	static Histogram CreateHistogram(int row0, int row1, int col0, int col1, int rows, int cols, double* partDerivX, double* partDerivY, double* weight, int intervalsNum);
 
 	//create Gauss core
 	static Core CreateGaussCore(double sigma, int k);
