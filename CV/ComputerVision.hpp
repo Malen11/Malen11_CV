@@ -36,8 +36,8 @@ struct Histogram {
 struct Descriptor {
 
 	Dot point;
-
-	Histogram* histograms;
+	int featuresNum;
+	double* features;
 };
 
 
@@ -60,10 +60,20 @@ public:
 	static const int kPartDerivativeXScharr = 308;		//Partial Derivative X (Scharr)
 	static const int kPartDerivativeYScharr = 309;		//Partial Derivative Y (Scharr)
 
-	static const int kHarrisResponseDirect = 401;		//response for Harris (Direct by calculate own numbers)
+	//static const int kHarrisResponseDirect = 401;		//response for Harris (Direct by calculate own numbers)
 	static const int kHarrisResponseBase = 402;			//response for Harris (Base with k)
 	static const int kHarrisResponseForstner = 403;		//response for Harris (Förstner and Gülch)
-	
+
+	static const int kDescriptorSimple = 501;			//Descriptor type (simple square descriptor)
+
+	static const int kDescriptorNormalization2Times = 601;	//Descriptor normalization type (normalize, thresh, normalize)
+	static const int kDescriptorNormalizationSimple = 602;	//Descriptor normalization type (normalize 1 time only)
+	static const int kDescriptorNormalizationNone = 603;	//Descriptor normalization type (not normalize)
+
+	static const int kDescriptorsComparisonEuclid = 701;	//Descriptor comparison type (Euclid distance)
+	static const int kDescriptorsComparisonManhattan = 702;	//Descriptor comparison type (Manhattan metric)
+	static const int kDescriptorsComparisonSSD = 703;		//Descriptor comparison type (Sum of squared distances)
+
 	static const double PI() { return std::atan(1.0) * 4;}
 
 	static std::vector<Dot> ANMS(std::vector<Dot> points, int rows, int cols, double* responseMap, int num, double c=0.9);
@@ -83,13 +93,30 @@ public:
 	static double* CannyRaw(int rows, int cols, T* data, double sigma, int k, double lowThreshhold, double highThreshhold, int interpolateType = kInterpolateZero);
 	
 	//create Descriptor
-	static std::vector<Descriptor> CalculateDescriptors(Image& img, std::vector<Dot> points, int gridSizeK, int histogramSize, int intervalsNum);
+	static std::vector<Descriptor> CreateDescriptors(Image& img, std::vector<Dot> points, int windowSizeX, int windowSizeY, int histogramNumX, int histogramNumY, int intervalsNum, int descriptorType = kDescriptorSimple, int descriptorNormalizationType = kDescriptorNormalizationNone, int PartDerivativeType = kPartDerivativeSobel);
+
+	//create Descriptors
+	template <typename T>
+	static std::vector<Descriptor> CreateDescriptorsRaw(int rows, int cols, T * data, std::vector<Dot> points, int windowSizeX, int windowSizeY, int histogramNumX, int histogramNumY, int intervalsNum, int descriptorType = kDescriptorSimple, int descriptorNormalizationType = kDescriptorNormalizationNone, int partDerivativeType = kPartDerivativeSobel);
+	
+	//create Simple Descriptor
+	static Descriptor CreateSimpleDescriptorRaw(Dot point, int rows, int cols, double* partDerX, double* partDerY, Dot pointLT, Dot pointRB, int histogramNumX, int histogramNumY, int intervalsNum);
 
 	//create Histogram
-	static Histogram CreateHistogram(int row0, int row1, int col0, int col1, int rows, int cols, double* partDerivX, double* partDerivY, double* weight, int intervalsNum);
+	static Histogram CreateHistogramRaw(std::vector<double> pixelValues, std::vector<double> pixelAngles, int intervalsNum);
 
 	//create Gauss core
 	static Core CreateGaussCore(double sigma, int k);
+
+	//cut out image's part
+	static Image CutOutImage(Image img, int row0, int col0, int row1, int col1);
+
+	//cut out image's part
+	template <typename T>
+	static T* CutOutImageRaw(int rows, int cols, T* data, int row0, int col0, int row1, int col1, int interpolateType = kInterpolateZero);
+
+	//calculate distanse beatween 2 descriptors 
+	static double DescriptorsDifference(Descriptor desc0, Descriptor desc1, int descriptorsComparisonType = kDescriptorsComparisonEuclid);
 
 	//apply Gauss to Image
 	static Image Gauss(Image& img, double sigma, int k, int interpolateType = kInterpolateZero);
@@ -100,6 +127,9 @@ public:
 	//apply Gauss to Image data (or array) 
 	template <typename T>
 	static double* GaussRaw(int rows, int cols, T* data, double sigma, int k, int interpolateType = kInterpolateZero);
+
+	//return array that represent matrix with gauss value
+	static double* GetGaussWeight( double sigma, int size);
 
 	//calculate virtual pixel for interpolation 
 	template <typename T>
@@ -283,6 +313,119 @@ double * ComputerVision::CannyRaw(int rows, int cols, T * data, double sigma, in
 }
 
 template<typename T>
+std::vector<Descriptor> ComputerVision::CreateDescriptorsRaw(int rows, int cols, T * data, std::vector<Dot> points, int windowSizeX, int windowSizeY, int histogramNumX, int histogramNumY, int intervalsNum, int descriptorType, int descriptorNormalizationType, int partDerivativeType) {
+
+	std::vector<Descriptor> descsVec;
+
+	double *partDerX = NULL, *partDerY = NULL;
+
+	if (partDerivativeType == kPartDerivativeSobel) {
+
+		partDerX = PartDerivative(rows, cols, data, kPartDerivativeXSobel, kInterpolateBorder);
+		partDerY = PartDerivative(rows, cols, data, kPartDerivativeYSobel, kInterpolateBorder);
+	}
+	else if (partDerivativeType == kPartDerivativePrewitt) {
+
+		partDerX = PartDerivative(rows, cols, data, kPartDerivativeXPrewitt, kInterpolateBorder);
+		partDerY = PartDerivative(rows, cols, data, kPartDerivativeYPrewitt, kInterpolateBorder);
+	}
+	else if (partDerivativeType == kPartDerivativeScharr) {
+
+		partDerX = PartDerivative(rows, cols, data, kPartDerivativeXScharr, kInterpolateBorder);
+		partDerY = PartDerivative(rows, cols, data, kPartDerivativeYScharr, kInterpolateBorder);
+	}
+
+	//int row, col;
+	//double angle, gradient, theta;
+	//for histograms and their intervals
+	//int histogramNum = histogramNumOXY * histogramNumOXY;
+	//double step = 2 * PI() / intervalsNum;
+
+	Dot pointLT, pointRB;
+
+	if (descriptorType = kDescriptorSimple) {
+
+		if (windowSizeX != windowSizeY)
+			throw std::invalid_argument("windowSizeX must match windowSizeY for descriptorType = kDescriptorSimple");
+
+		for (int i = 0; i < points.size(); i++) {
+
+			pointLT.x = points[i].x - windowSizeX / 2;
+			pointLT.y = points[i].y - windowSizeY / 2;
+
+			pointRB.x = pointLT.x + windowSizeX-1;
+			pointRB.y = pointLT.y + windowSizeY-1;
+
+			Descriptor desc = CreateSimpleDescriptorRaw(points[i], rows,cols, partDerX,partDerY, pointLT,pointRB, histogramNumX, histogramNumY, intervalsNum);
+			descsVec.push_back(desc);
+		}
+	}
+	else {
+		throw std::invalid_argument("Wrong descriptorType");
+	}
+
+	if (descriptorNormalizationType == kDescriptorNormalization2Times) {
+
+		double* temp;
+		for (int i = 0; i < descsVec.size(); i++) {
+
+			temp = LinearNormalization<double, double>(descsVec[i].featuresNum, descsVec[i].features, 0, 1);
+			delete[] descsVec[i].features;
+			descsVec[i].features = temp;
+
+			for (int j = 0; j < descsVec[i].featuresNum; j++) {
+				if (descsVec[i].features[j] < 0.2)
+					descsVec[i].features[j] = 0;
+			}
+
+			temp = LinearNormalization<double, double>(descsVec[i].featuresNum, descsVec[i].features, 0, 1);
+			delete[] descsVec[i].features;
+			descsVec[i].features = temp;
+		}
+	}
+	else if (descriptorNormalizationType == kDescriptorNormalizationSimple) {
+
+		double* temp;
+		for (int i = 0; i < descsVec.size(); i++) {
+
+			temp = LinearNormalization<double, double>(descsVec[i].featuresNum, descsVec[i].features, 0, 1);
+			delete[] descsVec[i].features;
+			descsVec[i].features = temp;
+		}
+	}
+	else {
+		cout << "descriptorNormalizationType not set. Descriptors not normalize";
+	}
+
+	return descsVec;
+}
+
+template<typename T>
+T* ComputerVision::CutOutImageRaw(int rows, int cols, T* data, int row0, int col0, int row1, int col1, int interpolateType) {
+
+	int rowsNew = row1 - row0 + 1;
+	int colsNew = col1 - col0 + 1;
+	T* dataNew = new T[rowsNew * colsNew];
+
+	long pos, posNew;
+	for (int i = row0; i <= row1; i++) {
+		for (int j = col0; j <= col1; j++) {
+
+			posNew = (i - row0) * colsNew + (j - col0);
+
+			dataNew[posNew] = GetVirtualPixel(i, j, rows, cols, data, interpolateType);
+		}
+	}
+
+	//for (int i = 0; i < rowsNew; i++) {
+	//	pos = (i + row0) * cols + col0;
+	//	copy(&data[pos], &data[pos + colsNew], stdext::checked_array_iterator<T*>(dataNew + i * colsNew, colsNew));
+	//}
+
+	return dataNew;
+}
+
+template<typename T>
 double * ComputerVision::GaussRaw(int rows, int cols, T * data, double sigma, int k, int interpolateType) {
 	
 	double *temp = NULL, *result = NULL;
@@ -366,6 +509,7 @@ std::vector<Dot> ComputerVision::HarrisRaw(int rows, int cols, T * data, int wk,
 	int size = rows * cols;
 	int pos;
 
+	//part derivative X, Y
 	double *partDerX = NULL, *partDerY = NULL;
 
 	if (PartDerivativeType == kPartDerivativeSobel) {
@@ -389,7 +533,7 @@ std::vector<Dot> ComputerVision::HarrisRaw(int rows, int cols, T * data, int wk,
 	double* C = new double[size];
 
 	double Ix, Iy;
-	Core gaussCore = CreateGaussCore(wk / 3, wk);
+	Core gaussCore = CreateGaussCore(wk / 3, wk); //gauss core for gauss weight
 	int gpos;
 
 	for (int i = 0; i < rows; i++) {
@@ -417,18 +561,20 @@ std::vector<Dot> ComputerVision::HarrisRaw(int rows, int cols, T * data, int wk,
 		}
 	}
 
+	//calculate response map
 	double* responseMap = HarrisResponse(rows, cols, A, B, C, ComputerVision::kHarrisResponseForstner);
 
-	Image test(rows, cols, responseMap, true);
-	test.GetMaxValue();
-	cv::imshow("test", test.GetMat());
+	//show response map
+	//Image test(rows, cols, responseMap, true);
+	//test.GetMaxValue();
+	//cv::imshow("test", test.GetMat());
 
 	std::vector<Dot> result;
 	Dot point;
 	bool isPoint;
 	int r;
 
-
+	//check is some point greater then threshold AND local max
 	for (int i = 0; i < rows; i++) {
 		for (int j = 0; j < cols; j++) {
 
@@ -458,14 +604,15 @@ std::vector<Dot> ComputerVision::HarrisRaw(int rows, int cols, T * data, int wk,
 			}
 		}
 	}
-		
+	
+	//calculate ANMS or not
 	if (ANMSNeeded == -1) {
 
 		return result;
 	}
 	else {
 
-		return ANMS(result, rows,cols, responseMap, ANMSNeeded);
+		return ANMS(result, rows,cols, responseMap, ANMSNeeded,1);
 	}
 }
 

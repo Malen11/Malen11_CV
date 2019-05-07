@@ -21,6 +21,7 @@ public:
 	Image();														//конструктор по умолчанию (0 строк и столбцов, указатель матрицы = NULL)
 	Image(cv::Mat img, int type = kRGB2GRAY_HDTV);					//конструктор на основе матрицы
 	Image(const Image& other);										//конструктор копирования
+	Image(int rows, int cols, uchar defValue);						//конструктор однотонового изображения
 	template <typename T>									
 	Image(int rows, int cols, T** matrix, bool normalize = false);	//конструктор на основе 2-D массива
 	template<typename T>									
@@ -47,12 +48,14 @@ public:
 
 	void Print() const;											//вывод данных на экран
 	bool IsEmpty() const;										//проверяет, пустое ли изображение
+	Image InsertImage(Image img, int posX, int posY) const;		//вставляет одно изображение в другое
 	void Swap(Image& other);
 	template<typename srcT, typename dstT>
 	static dstT* LinearNormalization(int dataSize, srcT* data, dstT newMin, dstT newMax);	//функция для линейной нормализации
 	void NormalizeImage();										//Normalize image to 0-255 uchar
 	void DownsampleImage(int scale);
 	Image AbsoluteDiff(const Image& img1, const Image&img2);
+	void RotateImage(double angle);
 
 	~Image();
 

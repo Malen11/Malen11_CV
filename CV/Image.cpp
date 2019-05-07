@@ -69,6 +69,19 @@ Image::Image(const Image& other) {
 	copy(other.data, &(other.data[rows * cols]), stdext::checked_array_iterator<uchar*>(this->data, rows*cols));
 }
 
+Image::Image(int rows, int cols, uchar defValue) {
+
+	int size = cols * rows;
+
+	this->rows = rows;
+	this->cols = cols;
+	this->data = new uchar[size];
+
+	for (int i = 0; i < size; i++) {
+		data[i] = defValue;
+	}
+}
+
 //create and get cv::Mat
 Mat Image::GetMat() const {
 
@@ -148,6 +161,77 @@ Image Image::AbsoluteDiff(const Image& img1, const Image&img2) {
 	}
 }
 
+void Image::RotateImage(double angle) {
+
+	int rowMid = this->rows / 2, colMid = this->cols/2;
+	int size = rows*cols;
+	//uchar* dataRotated1 = new uchar[size];
+	uchar* dataRotated2 = new uchar[size];
+
+	for (int i = 0; i < size; i++) {
+		//dataRotated1[i] = 255;
+		dataRotated2[i] = 255;
+	}
+	
+	int rowNew, colNew;
+	//int rowOld, colOld;
+	
+	/*
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+
+			colOld = std::cos(-angle)*(j - colMid) - std::sin(-angle)*(i - rowMid)+colMid;
+			rowOld = std::sin(-angle)*(j - colMid) + std::cos(-angle)*(i - rowMid)+rowMid;
+
+			if (colOld >= 0 && colOld < cols && rowOld >= 0 && rowOld < rows) {
+
+				dataRotated1[i*cols + j] = data[rowOld*cols + colOld];
+			}
+		}
+	}
+	*/
+	
+	for (int i = -rowMid; i <= rowMid; i++) {
+		for (int j = -colMid; j < colMid; j++) {
+
+			colNew = colMid+(std::cos(angle)*j - std::sin(angle)*i);
+			rowNew = rowMid+(std::sin(angle)*j + std::cos(angle)*i);
+
+			if (colNew >= 0 && colNew < cols && rowNew >= 0 && rowNew < rows) {
+
+				dataRotated2[rowNew*cols + colNew] = data[(rowMid+i)*cols + (colMid+j)];
+			}
+		}
+	}
+	
+	int pixel, n;
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+
+			pixel = 0;
+			n = 0;
+
+			if (dataRotated2[i*cols + j] == 255) {
+
+				for (int u = -1; u <= 1; u++) {
+					for (int v = -1; v <= 1; v++) {
+						if (u + i >= 0 && u + i < rows && v + j>=0 && v + j < cols) {
+							pixel += dataRotated2[(i + u)*cols + (j + v)];
+							++n;
+						}
+					}
+				}
+
+				dataRotated2[i*cols + j] = pixel/n;
+			}
+		}
+	}
+
+	delete[] data;
+	//delete[] dataRotated1;
+	data = dataRotated2;
+}
+
 //destructor
 Image::~Image() {
 
@@ -187,6 +271,22 @@ bool Image::IsEmpty() const {
 		return false;
 	else
 		return true;
+}
+
+Image Image::InsertImage(Image img, int posX, int posY) const {
+
+	Image resImg(rows,cols, data);
+
+
+	for (int i = 0; i < img.rows; i++) {
+		for (int j = 0; j < img.cols; j++) {
+
+			if ((i + posY)>0 && (i + posY) < rows && (j + posX)>0 && (j + posX) < cols) {
+				resImg.data[(i + posY)*cols + (j + posX)] = img.data[i*img.cols + j];
+			}
+		}
+	}
+	return resImg;
 }
 
 //swap
@@ -302,7 +402,9 @@ void Image::SetValueAt(int row, int col, uchar value) {
 
 Image& Image::operator=(Image other) {
 	
-	Swap(other);
+	if(this != &other)
+		Swap(other);
+	
 	return *this;
 }
 

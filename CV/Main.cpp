@@ -107,22 +107,26 @@ cv::Mat MatPlotPoints(Image& img, vector<Dot> points, int color = 0) {
 	return colored;
 }
 
-//C:\Users\alist\Desktop\Bikesgray.jpg
-//C:\Users\alist\Desktop\obj.jpg
-//C:\Users\alist\Desktop\Lena2.jpg
-//C:\Users\alist\Desktop\LenaRotate.jpg
-//C:\Users\alist\Desktop\LenaRotate2.jpg
-//C:\Users\alist\Desktop\Valve_original_(1).PNG
+//C:\Users\alist\Desktop\cv\Bikesgray.jpg
+//C:\Users\alist\Desktop\cv\obj.jpg
+//C:\Users\alist\Desktop\cv\Lena2.jpg
+//C:\Users\alist\Desktop\cv\Lena2lheight.jpg
+//C:\Users\alist\Desktop\cv\Lena2contrast.jpg
+//C:\Users\alist\Desktop\cv\Lena2light.jpg
+//C:\Users\alist\Desktop\cv\LenaRotate.jpg
+//C:\Users\alist\Desktop\cv\LenaRotate2.jpg
+//C:\Users\alist\Desktop\cv\Valve_original_(1).PNG
 int main() {
 
 	Mat mat = LoadImage();
-	Mat mat1 = LoadImage();
-
 	Image test(mat);
 	imshow("Base image", test.GetMat());
+
+	Mat mat1 = LoadImage();
 	Image test1(mat1);
 	imshow("Base image 1", test1.GetMat());
-	
+
+	Image emptyImg(test.GetRowsNumber() + test1.GetRowsNumber(), test.GetColsNumber() + test1.GetColsNumber(), 0);
 	//double* ddata = test.GetNormalizeDataF();
 	//Image test1(test.GetRowsNumber(), test.GetColsNumber(), ddata,true);
 	//imshow("Normalize image", test1.GetMat());
@@ -172,6 +176,7 @@ int main() {
 	*/
 
 	//lab 3
+	/*
 	//test2 = ComputerVision::Canny(test, 2, 6, 40, 30);
 	//imshow("Canny", test2.GetMat());
 
@@ -190,8 +195,55 @@ int main() {
 	pointsANMS = ComputerVision::Harris(test1, 3, 3, 0.03, 40);
 	imshow("Harris Points 1 (ANMS)", MatPlotPoints(test1, pointsANMS));
 	
+	//test.RotateImage(-0.2);
+	//imshow("rotate!", test.GetMat());
+	
 	//vector<Dot> points = ComputerVision::Moravec(test, 3, 1,3,0.02);
 	//imshow("Moravec Points", MatPlotPoints(test, points));
+	*/
+
+	//lab4
+
+	vector<Dot> pointsANMS = ComputerVision::Harris(test, 3, 3, 0.03, 50);
+	imshow("Harris Points (ANMS)", MatPlotPoints(test, pointsANMS));
+
+	vector<Descriptor> descriptors = ComputerVision::CreateDescriptors(test, pointsANMS, 16, 16, 2, 2, 8,ComputerVision::kDescriptorSimple, ComputerVision::kDescriptorNormalization2Times);
+	
+	vector<Dot> pointsANMS1 = ComputerVision::Harris(test1, 3, 3, 0.03, 50);
+	imshow("Harris Points 1 (ANMS)", MatPlotPoints(test1, pointsANMS1));
+
+	vector<Descriptor> descriptors1 = ComputerVision::CreateDescriptors(test1, pointsANMS1, 16, 16, 2, 2, 8, ComputerVision::kDescriptorSimple, ComputerVision::kDescriptorNormalization2Times);
+	emptyImg=emptyImg.InsertImage(test, 0, 0).InsertImage(test1, test.GetColsNumber(), test.GetRowsNumber());
+	
+	int* matchedPoints = new int[descriptors.size()];
+	double bestMatching, matching;
+
+	for (int i = 0; i < descriptors.size(); i++) {
+
+		matchedPoints[i]= 0;
+		bestMatching = ComputerVision::DescriptorsDifference(descriptors[i], descriptors1[0]);
+
+		for (int j = 1; j < descriptors1.size(); j++) {
+
+			matching = ComputerVision::DescriptorsDifference(descriptors[i], descriptors1[j]);
+			if (matching < bestMatching) {
+				bestMatching = matching;
+				matchedPoints[i] = j;
+			}
+		}
+	}
+	
+	Mat temp = emptyImg.GetMat();
+	cv::Mat colored;
+	cv::cvtColor(temp, colored, cv::COLOR_GRAY2BGR);
+
+	for (int i = 0; i < descriptors.size(); i++) {
+
+		line(colored, Point(descriptors[i].point.x, descriptors[i].point.y), Point(test.GetColsNumber()+descriptors1[matchedPoints[i]].point.x, test.GetRowsNumber() + descriptors1[matchedPoints[i]].point.y), CV_RGB(255, 0, 0),2);
+	}
+	
+	resize(colored, colored, Size(test.GetColsNumber(), test.GetRowsNumber()));
+	imshow("inserted image", colored);
 
 	//video 
 /*	
