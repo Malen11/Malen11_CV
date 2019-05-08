@@ -18,6 +18,14 @@ struct Dot {
 	int y;
 };
 
+//Point
+struct PairDot {
+
+	Dot point0;
+
+	Dot point1;
+};
+
 //Column (for Histogram)
 struct Interval {
 
@@ -74,9 +82,13 @@ public:
 	static const int kDescriptorsComparisonManhattan = 702;	//Descriptor comparison type (Manhattan metric)
 	static const int kDescriptorsComparisonSSD = 703;		//Descriptor comparison type (Sum of squared distances)
 
+	static const int kDescriptorsMatchingBase = 701;	//Descriptor matching type (by max matching, have multiselection!)
+	static const int kDescriptorsMatchingNNDR = 702;	//Descriptor matching type (Next Nearest Distance Ratio)
+	static const int kDescriptorsMatchingMutal = 703;	//Descriptor matching type (Mutal choice)
+
 	static const double PI() { return std::atan(1.0) * 4;}
 
-	static std::vector<Dot> ANMS(std::vector<Dot> points, int rows, int cols, double* responseMap, int num, double c=0.9);
+	static std::vector<Dot> ANMS(std::vector<Dot> points, int rows, int cols, double* responseMap, int pointsNeeded, double c=0.9);
 
 	//apply filter (calculate data*core) to Image
 	static Image ApplyFilter(Image& img, Core core, int type);	
@@ -117,6 +129,12 @@ public:
 
 	//calculate distanse beatween 2 descriptors 
 	static double DescriptorsDifference(Descriptor desc0, Descriptor desc1, int descriptorsComparisonType = kDescriptorsComparisonEuclid);
+	
+	//matching descriptors from descs1 to descs2
+	static int* DescriptorsMatchingRaw(std::vector<Descriptor> descs1, std::vector<Descriptor> descs2, int descriptorsComparisionType = kDescriptorsComparisonEuclid,int descriptorsMatchingType=kDescriptorsMatchingBase, double thresh=0);
+
+	//matching descriptors from descs1 to descs2
+	static std::vector<PairDot> DescriptorsMatching(std::vector<Descriptor> descs1, std::vector<Descriptor> descs2, int descriptorsComparisionType = kDescriptorsComparisonEuclid, int descriptorsMatchingType = kDescriptorsMatchingBase, double thresh = 0);
 
 	//apply Gauss to Image
 	static Image Gauss(Image& img, double sigma, int k, int interpolateType = kInterpolateZero);
@@ -136,11 +154,11 @@ public:
 	static T GetVirtualPixel(int row, int col, int rows, int cols, T* data, int interpolateType = kInterpolateZero);
 	
 	//apply Harris to Image
-	static std::vector<Dot> Harris(Image& img, int wk, int localMinK, double Threshold, int ANMSNeeded = -1, int PartDerivativeType = kPartDerivativeSobel);
+	static std::vector<Dot> Harris(Image& img, int wk, int localMinK, double Threshold, int pointsNeeded = -1, int PartDerivativeType = kPartDerivativeSobel);
 
 	//apply Harris to Image data (or array) 
 	template <typename T>
-	static std::vector<Dot> HarrisRaw(int rows, int cols, T* data, int wk, int localMinK, double Threshold, int ANMSNeeded = -1, int PartDerivativeType= kPartDerivativeSobel);
+	static std::vector<Dot> HarrisRaw(int rows, int cols, T* data, int wk, int localMinK, double Threshold, int pointsNeeded = -1, int PartDerivativeType= kPartDerivativeSobel);
 
 	//calculate response for Harris
 	static double* HarrisResponse(int rows, int cols, double* A, double* B, double* C, int harrisResponseType = kHarrisResponseBase);
@@ -364,6 +382,9 @@ std::vector<Descriptor> ComputerVision::CreateDescriptorsRaw(int rows, int cols,
 		throw std::invalid_argument("Wrong descriptorType");
 	}
 
+	delete[] partDerX;
+	delete[] partDerY;
+
 	if (descriptorNormalizationType == kDescriptorNormalization2Times) {
 
 		double* temp;
@@ -396,6 +417,7 @@ std::vector<Descriptor> ComputerVision::CreateDescriptorsRaw(int rows, int cols,
 	else {
 		cout << "descriptorNormalizationType not set. Descriptors not normalize";
 	}
+
 
 	return descsVec;
 }
@@ -504,7 +526,7 @@ T ComputerVision::GetVirtualPixel(int row, int col, int rows, int cols, T* data,
 }
 
 template<typename T>
-std::vector<Dot> ComputerVision::HarrisRaw(int rows, int cols, T * data, int wk, int localMinK, double Threshold, int ANMSNeeded, int PartDerivativeType) {
+std::vector<Dot> ComputerVision::HarrisRaw(int rows, int cols, T * data, int wk, int localMinK, double Threshold, int pointsNeeded, int PartDerivativeType) {
 
 	int size = rows * cols;
 	int pos;
@@ -532,9 +554,12 @@ std::vector<Dot> ComputerVision::HarrisRaw(int rows, int cols, T * data, int wk,
 	double* B = new double[size];
 	double* C = new double[size];
 
+	//Core gaussCore = CreateGaussCore(wk / 3, wk); //gauss core for gauss weight
 	double Ix, Iy;
-	Core gaussCore = CreateGaussCore(wk / 3, wk); //gauss core for gauss weight
-	int gpos;
+	int gaussSizeD = 2 * wk + 1;//gause size of dimension (gaussSizeD x gaussSizeD)-square matrix
+	double* gaussWeight = GetGaussWeight(wk / 3.0, gaussSizeD);
+	
+	int gpos, iB, jB;	//B-Biased
 
 	for (int i = 0; i < rows; i++) {
 		for (int j = 0; j < cols; j++) {
@@ -548,14 +573,25 @@ std::vector<Dot> ComputerVision::HarrisRaw(int rows, int cols, T * data, int wk,
 			for (int u = -wk; u <= wk; u++) {
 				for (int v = -wk; v <= wk; v++) {
 
-					gpos = (wk + u)*(2 * wk + 1) + (wk + v);
+					iB = i + u;
+					jB = j + v;
 
-					Ix = GetVirtualPixel<double>(i + u, j + v, rows, cols, partDerX, kInterpolateZero);
-					Iy = GetVirtualPixel<double>(i + u, j + v, rows, cols, partDerY, kInterpolateZero);
+					if (iB >= 0 && iB < rows - 1 && jB >= 0 && jB < cols - 1) {
 
-					A[pos] += Ix * Ix*gaussCore.data[gpos];
-					B[pos] += Ix * Iy*gaussCore.data[gpos];
-					C[pos] += Iy * Iy*gaussCore.data[gpos];
+						Ix = partDerX[iB*cols + jB];
+						Iy = partDerY[iB*cols + jB];
+					}
+					else {
+
+						Ix = GetVirtualPixel<double>(iB, jB, rows, cols, partDerX, kInterpolateZero);
+						Iy = GetVirtualPixel<double>(iB, jB, rows, cols, partDerY, kInterpolateZero);
+					}
+
+					gpos = (wk + u)*gaussSizeD + (wk + v);
+
+					A[pos] += Ix * Ix * gaussWeight[gpos];
+					B[pos] += Ix * Iy * gaussWeight[gpos];
+					C[pos] += Iy * Iy * gaussWeight[gpos];
 				}
 			}
 		}
@@ -575,6 +611,8 @@ std::vector<Dot> ComputerVision::HarrisRaw(int rows, int cols, T * data, int wk,
 	int r;
 
 	//check is some point greater then threshold AND local max
+	double localValue;
+
 	for (int i = 0; i < rows; i++) {
 		for (int j = 0; j < cols; j++) {
 
@@ -605,15 +643,25 @@ std::vector<Dot> ComputerVision::HarrisRaw(int rows, int cols, T * data, int wk,
 		}
 	}
 	
+	//clear arrays
+	delete[] A;
+	delete[] B;
+	delete[] C;
+
+	std::vector<Dot> resultANMS;
+
 	//calculate ANMS or not
-	if (ANMSNeeded == -1) {
-
-		return result;
+	if (pointsNeeded > 0) {
+	
+		resultANMS = ANMS(result, rows, cols, responseMap, pointsNeeded, 1);
+		result.clear();
+		result = resultANMS;
+		resultANMS.clear();
 	}
-	else {
 
-		return ANMS(result, rows,cols, responseMap, ANMSNeeded,1);
-	}
+	delete[] responseMap;
+
+	return result;
 }
 
 template<typename srcT, typename dstT>

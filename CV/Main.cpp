@@ -107,6 +107,21 @@ cv::Mat MatPlotPoints(Image& img, vector<Dot> points, int color = 0) {
 	return colored;
 }
 
+cv::Mat MatPlotLines(Image& img, vector<PairDot> lines, int color = 0) {
+
+	cv::Mat temp = img.GetMat();
+	cv::Mat colored;
+	cv::cvtColor(temp, colored, cv::COLOR_GRAY2BGR);
+	RNG rng(12345);
+	
+	for (vector<PairDot>::iterator it = lines.begin(); it != lines.end(); it++) {
+		Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+		line(colored, Point((*it).point0.x, (*it).point0.y), Point((*it).point1.x, (*it).point1.y), color, 2);
+	}
+
+	return colored;
+}
+
 //C:\Users\alist\Desktop\cv\Bikesgray.jpg
 //C:\Users\alist\Desktop\cv\obj.jpg
 //C:\Users\alist\Desktop\cv\Lena2.jpg
@@ -203,18 +218,35 @@ int main() {
 	*/
 
 	//lab4
+	test3 = test;// ComputerVision::GaussDefault(test, 1.2, ComputerVision::kInterpolateReflection);
+	vector<Dot> pointsANMS = ComputerVision::Harris(test3, 3, 3, 0.03, 50);
+	imshow("Harris Points (ANMS)", MatPlotPoints(test3, pointsANMS));
 
-	vector<Dot> pointsANMS = ComputerVision::Harris(test, 3, 3, 0.03, 50);
-	imshow("Harris Points (ANMS)", MatPlotPoints(test, pointsANMS));
+	vector<Descriptor> descriptors = ComputerVision::CreateDescriptors(test3, pointsANMS, 16, 16, 2, 2, 8,ComputerVision::kDescriptorSimple, ComputerVision::kDescriptorNormalization2Times);
 
-	vector<Descriptor> descriptors = ComputerVision::CreateDescriptors(test, pointsANMS, 16, 16, 2, 2, 8,ComputerVision::kDescriptorSimple, ComputerVision::kDescriptorNormalization2Times);
-	
-	vector<Dot> pointsANMS1 = ComputerVision::Harris(test1, 3, 3, 0.03, 50);
-	imshow("Harris Points 1 (ANMS)", MatPlotPoints(test1, pointsANMS1));
+	test4 = test1;// ComputerVision::GaussDefault(test1, 1.2, ComputerVision::kInterpolateReflection);
+	vector<Dot> pointsANMS1 = ComputerVision::Harris(test4, 3, 3, 0.03, 50);
+	imshow("Harris Points 1 (ANMS)", MatPlotPoints(test4, pointsANMS1));
 
-	vector<Descriptor> descriptors1 = ComputerVision::CreateDescriptors(test1, pointsANMS1, 16, 16, 2, 2, 8, ComputerVision::kDescriptorSimple, ComputerVision::kDescriptorNormalization2Times);
+	vector<Descriptor> descriptors1 = ComputerVision::CreateDescriptors(test4, pointsANMS1, 16, 16, 2, 2, 8, ComputerVision::kDescriptorSimple, ComputerVision::kDescriptorNormalization2Times);
 	emptyImg=emptyImg.InsertImage(test, 0, 0).InsertImage(test1, test.GetColsNumber(), test.GetRowsNumber());
 	
+	//vector<PairDot> matchedDesc = ComputerVision::DescriptorsMatching(descriptors, descriptors1);
+	//vector<PairDot> matchedDesc = ComputerVision::DescriptorsMatching(descriptors, descriptors1, ComputerVision::kDescriptorsComparisonEuclid, ComputerVision::kDescriptorsMatchingNNDR,0.8);
+	vector<PairDot> matchedDesc = ComputerVision::DescriptorsMatching(descriptors, descriptors1, ComputerVision::kDescriptorsComparisonEuclid, ComputerVision::kDescriptorsMatchingMutal); 
+	vector<PairDot> lines(matchedDesc.size());
+
+	PairDot line;
+	for (int i = 0; i < matchedDesc.size(); i++) {
+		line.point0 = matchedDesc[i].point0;
+
+		line.point1.x = matchedDesc[i].point1.x + test.GetColsNumber();
+		line.point1.y = matchedDesc[i].point1.y + test.GetRowsNumber();
+		lines.push_back(line);
+	}
+
+	Mat colored = MatPlotLines(emptyImg, lines);
+	/*
 	int* matchedPoints = new int[descriptors.size()];
 	double bestMatching, matching;
 
@@ -240,9 +272,10 @@ int main() {
 	for (int i = 0; i < descriptors.size(); i++) {
 
 		line(colored, Point(descriptors[i].point.x, descriptors[i].point.y), Point(test.GetColsNumber()+descriptors1[matchedPoints[i]].point.x, test.GetRowsNumber() + descriptors1[matchedPoints[i]].point.y), CV_RGB(255, 0, 0),2);
-	}
+	}*/
 	
-	resize(colored, colored, Size(test.GetColsNumber(), test.GetRowsNumber()));
+	double k = 1.2;
+	resize(colored, colored, Size(k*test.GetColsNumber(), k*test.GetRowsNumber()));
 	imshow("inserted image", colored);
 
 	//video 
