@@ -218,14 +218,20 @@ int main() {
 	*/
 
 	//lab4
-	test3 = test;// ComputerVision::GaussDefault(test, 1.2, ComputerVision::kInterpolateReflection);
-	vector<Dot> pointsANMS = ComputerVision::Harris(test3, 3, 3, 0.03, 50);
+
+
+	//test.RotateImage(-ComputerVision::PI()/4);
+	//imshow("rotate!", test.GetMat());
+
+
+	test3 =  test;//ComputerVision::GaussDefault(test, 1.2, ComputerVision::kInterpolateReflection);//
+	vector<Dot> pointsANMS = ComputerVision::Harris(test3, 4, 4, 0.03, 35);
 	imshow("Harris Points (ANMS)", MatPlotPoints(test3, pointsANMS));
 
 	vector<Descriptor> descriptors = ComputerVision::CreateDescriptors(test3, pointsANMS, 16, 16, 2, 2, 8,ComputerVision::kDescriptorSimple, ComputerVision::kDescriptorNormalization2Times);
 
-	test4 = test1;// ComputerVision::GaussDefault(test1, 1.2, ComputerVision::kInterpolateReflection);
-	vector<Dot> pointsANMS1 = ComputerVision::Harris(test4, 3, 3, 0.03, 50);
+	test4 =  test1;//ComputerVision::GaussDefault(test1, 1.2, ComputerVision::kInterpolateReflection);//
+	vector<Dot> pointsANMS1 = ComputerVision::Harris(test4, 4, 4, 0.03, 35);
 	imshow("Harris Points 1 (ANMS)", MatPlotPoints(test4, pointsANMS1));
 
 	vector<Descriptor> descriptors1 = ComputerVision::CreateDescriptors(test4, pointsANMS1, 16, 16, 2, 2, 8, ComputerVision::kDescriptorSimple, ComputerVision::kDescriptorNormalization2Times);

@@ -165,23 +165,22 @@ void Image::RotateImage(double angle) {
 
 	int rowMid = this->rows / 2, colMid = this->cols/2;
 	int size = rows*cols;
-	//uchar* dataRotated1 = new uchar[size];
-	uchar* dataRotated2 = new uchar[size];
+	uchar* dataRotated1 = new uchar[size];
+	//uchar* dataRotated2 = new uchar[size];
 
 	for (int i = 0; i < size; i++) {
-		//dataRotated1[i] = 255;
-		dataRotated2[i] = 255;
+		dataRotated1[i] = 255;
+		//dataRotated2[i] = 255;
 	}
 	
 	int rowNew, colNew;
-	//int rowOld, colOld;
+	int rowOld, colOld;
 	
-	/*
 	for (int i = 0; i < rows; i++) {
 		for (int j = 0; j < cols; j++) {
 
-			colOld = std::cos(-angle)*(j - colMid) - std::sin(-angle)*(i - rowMid)+colMid;
-			rowOld = std::sin(-angle)*(j - colMid) + std::cos(-angle)*(i - rowMid)+rowMid;
+			colOld = std::cos(angle)*(j - colMid) - std::sin(angle)*(i - rowMid)+colMid;
+			rowOld = std::sin(angle)*(j - colMid) + std::cos(angle)*(i - rowMid)+rowMid;
 
 			if (colOld >= 0 && colOld < cols && rowOld >= 0 && rowOld < rows) {
 
@@ -189,10 +188,9 @@ void Image::RotateImage(double angle) {
 			}
 		}
 	}
-	*/
 	
-	for (int i = -rowMid; i <= rowMid; i++) {
-		for (int j = -colMid; j < colMid; j++) {
+	/*for (int i = -rowMid; i <= rowMid; i++) {
+		for (int j = -colMid; j <= colMid; j++) {
 
 			colNew = colMid+(std::cos(angle)*j - std::sin(angle)*i);
 			rowNew = rowMid+(std::sin(angle)*j + std::cos(angle)*i);
@@ -225,11 +223,11 @@ void Image::RotateImage(double angle) {
 				dataRotated2[i*cols + j] = pixel/n;
 			}
 		}
-	}
+	}*/
 
 	delete[] data;
-	//delete[] dataRotated1;
-	data = dataRotated2;
+	//delete[] dataRotated2;
+	data = dataRotated1;
 }
 
 //destructor

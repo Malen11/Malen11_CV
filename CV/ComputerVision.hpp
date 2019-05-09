@@ -18,6 +18,13 @@ struct Dot {
 	int y;
 };
 
+//Gradients and angles array
+struct GradientsAnglesArray {
+
+	double* gradients;
+	double* angles;
+};
+
 //Point
 struct PairDot {
 
@@ -105,18 +112,24 @@ public:
 	static double* CannyRaw(int rows, int cols, T* data, double sigma, int k, double lowThreshhold, double highThreshhold, int interpolateType = kInterpolateZero);
 	
 	//create Descriptor
-	static std::vector<Descriptor> CreateDescriptors(Image& img, std::vector<Dot> points, int windowSizeX, int windowSizeY, int histogramNumX, int histogramNumY, int intervalsNum, int descriptorType = kDescriptorSimple, int descriptorNormalizationType = kDescriptorNormalizationNone, int PartDerivativeType = kPartDerivativeSobel);
+	static std::vector<Descriptor> CreateDescriptors(Image& img, std::vector<Dot> points, int DescriptorSizeX, int DescriptorSizeY, int histogramNumX, int histogramNumY, int intervalsNum, int descriptorType = kDescriptorSimple, int descriptorNormalizationType = kDescriptorNormalizationNone, int PartDerivativeType = kPartDerivativeSobel);
 
 	//create Descriptors
 	template <typename T>
-	static std::vector<Descriptor> CreateDescriptorsRaw(int rows, int cols, T * data, std::vector<Dot> points, int windowSizeX, int windowSizeY, int histogramNumX, int histogramNumY, int intervalsNum, int descriptorType = kDescriptorSimple, int descriptorNormalizationType = kDescriptorNormalizationNone, int partDerivativeType = kPartDerivativeSobel);
+	static std::vector<Descriptor> CreateDescriptorsRaw(int rows, int cols, T * data, std::vector<Dot> points, int DescriptorSizeX, int DescriptorSizeY, int histogramNumX, int histogramNumY, int intervalsNum, int descriptorType = kDescriptorSimple, int descriptorNormalizationType = kDescriptorNormalizationNone, int partDerivativeType = kPartDerivativeSobel);
 	
 	//create Simple Descriptor
-	static Descriptor CreateSimpleDescriptorRaw(Dot point, int rows, int cols, double* partDerX, double* partDerY, Dot pointLT, Dot pointRB, int histogramNumX, int histogramNumY, int intervalsNum);
+	static Descriptor CreateSimpleDescriptorRaw(Dot point, int rows, int cols, double* gradients, double* angles, int histogramNumX, int histogramNumY, int intervalsNum);
 
 	//calculate descriptor orientation's angles
-	static std::vector<double> CalculateDescriptorOrientationAnglesRaw(int rows, int cols, double* gradientsWeighted, double* angles, int intervalsNum, double thresh=0.8, int intervalsNumMax=2);
+	static std::vector<double> CalculateDescriptorOrientationAnglesRaw(int rows, int cols, double* gradientsWeighted, double* angles, int intervalsNum, double thresh=0.8, int alphaNumMax =2);
 
+	//calculate points' gradient AND angle on part of image
+	static GradientsAnglesArray CalculateGradientsFullRaw(int rows, int cols, double* partDerX, double* partDerY);
+
+	//calculate points' gradient AND angle on part of image
+	static GradientsAnglesArray CalculateGradientsFullRaw(int rows, int cols, double* partDerX, double* partDerY, Dot PointLT, Dot PointRB);
+	
 	//create Histogram
 	static Histogram CreateHistogramRaw(std::vector<double> values, std::vector<double> positions, double intervalsMinVal, double intervalsMaxVal,  int intervalsNum);
 
@@ -356,29 +369,78 @@ std::vector<Descriptor> ComputerVision::CreateDescriptorsRaw(int rows, int cols,
 		partDerY = PartDerivative(rows, cols, data, kPartDerivativeYScharr, kInterpolateBorder);
 	}
 
-	//int row, col;
-	//double angle, gradient, theta;
-	//for histograms and their intervals
-	//int histogramNum = histogramNumOXY * histogramNumOXY;
-	//double step = 2 * PI() / intervalsNum;
-
 	Dot pointLT, pointRB;
 
+	//if create simle descriptor
 	if (descriptorType = kDescriptorSimple) {
 
+		//check dimensions
 		if (windowSizeX != windowSizeY)
 			throw std::invalid_argument("windowSizeX must match windowSizeY for descriptorType = kDescriptorSimple");
 
+		//for every point create descriptor
 		for (int i = 0; i < points.size(); i++) {
 
+			//create window
 			pointLT.x = points[i].x - windowSizeX / 2;
 			pointLT.y = points[i].y - windowSizeY / 2;
 
-			pointRB.x = pointLT.x + windowSizeX-1;
-			pointRB.y = pointLT.y + windowSizeY-1;
+			pointRB.x = pointLT.x + windowSizeX - 1;
+			pointRB.y = pointLT.y + windowSizeY - 1;
 
-			Descriptor desc = CreateSimpleDescriptorRaw(points[i], rows,cols, partDerX, partDerY, pointLT,pointRB, histogramNumX, histogramNumY, intervalsNum);
-			descsVec.push_back(desc);
+			//calculate gradient values and angles
+			GradientsAnglesArray gaaTemp = CalculateGradientsFullRaw(rows, cols, partDerX, partDerY, pointLT, pointRB);
+			double* gradients = gaaTemp.gradients;
+			double* angles = gaaTemp.angles;
+
+			//calculate gauss weight for this part of image with 2d-size = rowsNew x rowsNew
+			double* gaussWeight = GetGaussWeight(double(windowSizeX) / 6.0, windowSizeX);//!!! is sigma correct?
+
+			//calculate weighted gradient
+			double* gradientsWeighted = new double[windowSizeX*windowSizeX];
+			for (int j = 0; j <= windowSizeX * windowSizeX; j++)
+				gradientsWeighted[j] = gaussWeight[j] * gradients[j];
+
+			//calculate dominating angles
+			std::vector<double> alpha = CalculateDescriptorOrientationAnglesRaw(windowSizeX, windowSizeX, gradientsWeighted, angles, 36);
+			
+			for (int j = 0; j < alpha.size(); j++) {
+			
+				double* gradientsRotated = new double[windowSizeX*windowSizeX];
+				double* anglesRotated = new double[windowSizeX*windowSizeX];
+				for (int rs = 0; rs < windowSizeX*windowSizeX; rs++) {
+					gradientsRotated[rs] = 0;
+					anglesRotated[rs] = 0;
+				}
+
+				double colMid = windowSizeX / 2.0, rowMid = windowSizeX / 2.0;
+
+				//int rowNew, colNew;
+				int rowOld, colOld;
+
+				for (int ri = 0; ri < windowSizeX; ri++) {
+					for (int rj = 0; rj < windowSizeX; rj++) {
+
+						colOld = std::round(std::cos(alpha[j])*(rj - colMid) - std::sin(alpha[j])*(ri - rowMid) + colMid);
+						rowOld = std::round(std::sin(alpha[j])*(rj - colMid) + std::cos(alpha[j])*(ri - rowMid) + rowMid);
+
+						if (colOld >= 0 && colOld < windowSizeX && rowOld >= 0 && rowOld < windowSizeX) {
+
+							gradientsRotated[ri*windowSizeX + rj] = gradients[rowOld*windowSizeX + colOld];
+							anglesRotated[ri*windowSizeX + rj] = angles[rowOld*windowSizeX + colOld] - alpha[j];
+
+							if (anglesRotated[ri*windowSizeX + rj] < 0)
+								anglesRotated[ri*windowSizeX + rj] += 2 * PI();
+						}
+					}
+				}
+
+				Descriptor desc = CreateSimpleDescriptorRaw(points[i], pointRB.y - pointLT.y + 1, pointRB.x - pointLT.x + 1, gradientsRotated, anglesRotated, histogramNumX, histogramNumY, intervalsNum);
+				descsVec.push_back(desc);
+			}
+			delete[] gradients;
+			delete[] angles;
+			delete[] gaussWeight;
 		}
 	}
 	else {
@@ -606,7 +668,7 @@ std::vector<Dot> ComputerVision::HarrisRaw(int rows, int cols, T * data, int wk,
 	//show response map
 	//Image test(rows, cols, responseMap, true);
 	//test.GetMaxValue();
-	//cv::imshow("test", test.GetMat());
+	//cv::imshow("test"+std::to_string(rand()), test.GetMat());
 
 	std::vector<Dot> result;
 	Dot point;
