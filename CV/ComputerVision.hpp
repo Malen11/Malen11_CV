@@ -114,8 +114,11 @@ public:
 	//create Simple Descriptor
 	static Descriptor CreateSimpleDescriptorRaw(Dot point, int rows, int cols, double* partDerX, double* partDerY, Dot pointLT, Dot pointRB, int histogramNumX, int histogramNumY, int intervalsNum);
 
+	//calculate descriptor orientation's angles
+	static std::vector<double> CalculateDescriptorOrientationAnglesRaw(int rows, int cols, double* gradientsWeighted, double* angles, int intervalsNum, double thresh=0.8, int intervalsNumMax=2);
+
 	//create Histogram
-	static Histogram CreateHistogramRaw(std::vector<double> pixelValues, std::vector<double> pixelAngles, int intervalsNum);
+	static Histogram CreateHistogramRaw(std::vector<double> values, std::vector<double> positions, double intervalsMinVal, double intervalsMaxVal,  int intervalsNum);
 
 	//create Gauss core
 	static Core CreateGaussCore(double sigma, int k);
@@ -374,7 +377,7 @@ std::vector<Descriptor> ComputerVision::CreateDescriptorsRaw(int rows, int cols,
 			pointRB.x = pointLT.x + windowSizeX-1;
 			pointRB.y = pointLT.y + windowSizeY-1;
 
-			Descriptor desc = CreateSimpleDescriptorRaw(points[i], rows,cols, partDerX,partDerY, pointLT,pointRB, histogramNumX, histogramNumY, intervalsNum);
+			Descriptor desc = CreateSimpleDescriptorRaw(points[i], rows,cols, partDerX, partDerY, pointLT,pointRB, histogramNumX, histogramNumY, intervalsNum);
 			descsVec.push_back(desc);
 		}
 	}
