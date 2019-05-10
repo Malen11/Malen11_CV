@@ -142,6 +142,7 @@ int main() {
 	imshow("Base image 1", test1.GetMat());
 
 	Image emptyImg(test.GetRowsNumber() + test1.GetRowsNumber(), test.GetColsNumber() + test1.GetColsNumber(), 0);
+	
 	//double* ddata = test.GetNormalizeDataF();
 	//Image test1(test.GetRowsNumber(), test.GetColsNumber(), ddata,true);
 	//imshow("Normalize image", test1.GetMat());
@@ -168,24 +169,28 @@ int main() {
 	*/
 	
 	//lab 2
-/*
-	ImagePyramid imgPyr1(test, 4, 0.5, 1.5);
 
-	ImagePyramid imgPyr2(test, 2, 0.5, 1.5);
+	//ImagePyramid imgPyr(test,3, 3, 0.5, 1.5,2);
+	//uchar* testU = new uchar[1];
 
-	test2 = imgPyr1.GetImage(0, 3);
+	//test4 = test2.AbsoluteDiff(test2, test3);
+	//test4.NormalizeImage();
 
-	test3 = imgPyr2.GetImage(0, 1);
+	//imshow("2-4 layers", test4.AbsoluteDiff(test2, test3).GetMat());
+	
+	/*for (int i = 0; i < imgPyr.GetImagesNum(); i++) {
 
-	test4 = test2.AbsoluteDiff(test2, test3);
-	test4.NormalizeImage();
+		double sigma = imgPyr.GetSigma0()* pow(imgPyr.GetSigmaInterval(),i);
 
-	imshow("2-4 layers", test4.AbsoluteDiff(test2, test3).GetMat());
+		imshow("Sigma: " + std::to_string(sigma), imgPyr.GetNearestImage(sigma).GetMat());
 
-	for (int i = 0; i < imgPyr.GetOctavesNum(); i++) {
-		for (int j = 0; j < imgPyr.GetLayersNum(); j++) {
-			cv::imwrite("pyramid/Octave " + std::to_string(i) + " Layer " + std::to_string(j)+".png", imgPyr.GetImage(i, j).GetMat());
-			//imshow("Octave: "+std::to_string(i)+" Layer: "+ std::to_string(j), imgPyr.GetImage(i, j).GetMat());
+		waitKey();
+	}*/
+
+	/*for (int i = 0; i < imgPyr.GetOctavesNum(); i++) {
+		for (int j = 0; j <= imgPyr.GetLayersNum() +imgPyr.GetLayersAdditionalNum(); j++) {
+			//cv::imwrite("pyramid/Octave " + std::to_string(i) + " Layer " + std::to_string(j)+".png", imgPyr.GetImage(i, j).GetMat());
+			imshow("Octave: "+std::to_string(i)+" Layer: "+ std::to_string(j) + "Sigmas: " + std::to_string(imgPyr.sigmaArray[i*(imgPyr.GetLayersNum() + imgPyr.GetLayersAdditionalNum() +1)+j]), imgPyr.GetImage(i, j).GetMat());
 		}
 	}
 	*/
@@ -217,21 +222,21 @@ int main() {
 	//imshow("Moravec Points", MatPlotPoints(test, points));
 	*/
 
-	//lab4
+	//lab 4-5
 
-
+	/*
 	//test.RotateImage(-ComputerVision::PI()/4);
 	//imshow("rotate!", test.GetMat());
 
 
 	test3 =  test;//ComputerVision::GaussDefault(test, 1.2, ComputerVision::kInterpolateReflection);//
-	vector<Dot> pointsANMS = ComputerVision::Harris(test3, 4, 4, 0.03, 35);
+	vector<Dot> pointsANMS = ComputerVision::Harris(test3, 4, 4, 0.03, 50);
 	imshow("Harris Points (ANMS)", MatPlotPoints(test3, pointsANMS));
 
 	vector<Descriptor> descriptors = ComputerVision::CreateDescriptors(test3, pointsANMS, 16, 16, 2, 2, 8,ComputerVision::kDescriptorSimple, ComputerVision::kDescriptorNormalization2Times);
 
 	test4 =  test1;//ComputerVision::GaussDefault(test1, 1.2, ComputerVision::kInterpolateReflection);//
-	vector<Dot> pointsANMS1 = ComputerVision::Harris(test4, 4, 4, 0.03, 35);
+	vector<Dot> pointsANMS1 = ComputerVision::Harris(test4, 4, 4, 0.03, 50);
 	imshow("Harris Points 1 (ANMS)", MatPlotPoints(test4, pointsANMS1));
 
 	vector<Descriptor> descriptors1 = ComputerVision::CreateDescriptors(test4, pointsANMS1, 16, 16, 2, 2, 8, ComputerVision::kDescriptorSimple, ComputerVision::kDescriptorNormalization2Times);
@@ -252,37 +257,14 @@ int main() {
 	}
 
 	Mat colored = MatPlotLines(emptyImg, lines);
-	/*
-	int* matchedPoints = new int[descriptors.size()];
-	double bestMatching, matching;
-
-	for (int i = 0; i < descriptors.size(); i++) {
-
-		matchedPoints[i]= 0;
-		bestMatching = ComputerVision::DescriptorsDifference(descriptors[i], descriptors1[0]);
-
-		for (int j = 1; j < descriptors1.size(); j++) {
-
-			matching = ComputerVision::DescriptorsDifference(descriptors[i], descriptors1[j]);
-			if (matching < bestMatching) {
-				bestMatching = matching;
-				matchedPoints[i] = j;
-			}
-		}
-	}
-	
-	Mat temp = emptyImg.GetMat();
-	cv::Mat colored;
-	cv::cvtColor(temp, colored, cv::COLOR_GRAY2BGR);
-
-	for (int i = 0; i < descriptors.size(); i++) {
-
-		line(colored, Point(descriptors[i].point.x, descriptors[i].point.y), Point(test.GetColsNumber()+descriptors1[matchedPoints[i]].point.x, test.GetRowsNumber() + descriptors1[matchedPoints[i]].point.y), CV_RGB(255, 0, 0),2);
-	}*/
 	
 	double k = 1.2;
 	resize(colored, colored, Size(k*test.GetColsNumber(), k*test.GetRowsNumber()));
 	imshow("inserted image", colored);
+	*/
+
+	//lab6 
+
 
 	//video 
 /*	
