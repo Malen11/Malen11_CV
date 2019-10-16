@@ -1,167 +1,186 @@
 #pragma once
-#include <opencv2/opencv.hpp>
+#include "stdafx.h"
 
-//Constant
+namespace CV_labs {
 
-const int kRGB2GRAY_NTSC = 105;
-const int kRGB2GRAY_HDTV = 104;
-const int kRED = 103;
-const int kGREEN = 102;
-const int kBLUE = 101;
+#pragma region Constants
 
-//Definition
+	const int kRGB2GRAY_NTSC = 105;
+	const int kRGB2GRAY_HDTV = 104;
+	const int kRED = 103;
+	const int kGREEN = 102;
+	const int kBLUE = 101;
 
-//for store, get info and modify grayscale image data
-class Image {
-private:
-	uchar* data;		//матрица значений
-	int rows;			//количество строк
-	int cols;			//количество столбцов
-public:
-	Image();														//конструктор по умолчанию (0 строк и столбцов, указатель матрицы = NULL)
-	Image(cv::Mat img, int type = kRGB2GRAY_HDTV);					//конструктор на основе матрицы
-	Image(const Image& other);										//конструктор копирования
-	Image(int rows, int cols, uchar defValue);						//конструктор однотонового изображения
-	template <typename T>									
-	Image(int rows, int cols, T** matrix, bool normalize = false);	//конструктор на основе 2-D массива
-	template<typename T>									
-	Image(int rows, int cols, T * matrix, bool normalize = false);	//конструктор на основе 1-D массива
+#pragma endregion
 
-	Image& operator =(Image other);								//присвоение для ленивых
+	//Class for storing image
+	class Image {
 
-	//get
-	int GetRowsNumber() const;									//получить количество строк
-	int GetColsNumber() const;									//получить количество столбцов
-	int GetSize() const;										//получить количество pixels в изображении
-	uchar* GetData() const;										//получить данные
-	uchar* GetNormalizeDataUC() const;							//получить нормализованные данные типа uchar
-	double* GetNormalizeDataF() const;							//получить нормализованные данные типа double
-	uchar GetValueAt(int row, int col) const;					//получить значение в позиции [row, col]
-	double GetMinValue() const;									//получить минимальное значение
-	double GetMaxValue() const;									//получить максимальное значение
-	cv::Mat GetMat() const;										//преобразовывет матрицу данных к другому типу данных
-	//std::vector<cv::Point> GetPoints(int Threshold = 255) const;
-	Image GetDownsampleImage(int scale) const;
+	private:
+		uchar * data;		//pixel value's matrix
+		int rowsNum;		//number of rows
+		int colsNum;		//number of columns
 
-	//set
-	void SetValueAt(int row, int col, uchar value);				// установить значение value в позиции [row, col]
+	public:
 
-	void Print() const;											//вывод данных на экран
-	bool IsEmpty() const;										//проверяет, пустое ли изображение
-	Image InsertImage(Image img, int posX, int posY) const;		//вставляет одно изображение в другое
-	void Swap(Image& other);
-	template<typename srcT, typename dstT>
-	static dstT* LinearNormalization(int dataSize, srcT* data, dstT newMin, dstT newMax);	//функция для линейной нормализации
-	void NormalizeImage();										//Normalize image to 0-255 uchar
-	void DownsampleImage(int scale);
-	Image AbsoluteDiff(const Image& img1, const Image&img2);
-	void RotateImage(double angle);
+#pragma region Constructors & Destructor
 
-	~Image();
+		//Default constuctor.
+		//Set data = NULL and rowsNum/colsNum = 0.
+		Image();
 
-	//need modify!
-	Image& operator -(const Image& other);						//вычитание для ленивых
-	Image& operator +(const Image& other);						//сложение для ленивых
-};
+		//Constructor.
+		//Get OpenCV Mat as data source and int type as a way, how image must be read.
+		Image(cv::Mat img, int type = kRGB2GRAY_HDTV);
 
-//template function realization
-template <typename T>
-Image::Image(int rows, int cols, T** matrix, bool normalize) {
+		//Copy constructor.
+		Image(const Image& other);
 
-	this->rows = rows;
-	this->cols = cols;
+		//Constructor for one-color image with specific side sizes.
+		Image(int rowsNum, int colsNum, uchar defValue);
 
-	if (cols > 0 && rows > 0 && matrix != NULL) {
+		//Constructor from array.
+		Image(int rowsNum, int colsNum, uchar* data);
 
-		this->data = new uchar[cols*rows];
+		Image(int rowsNum, int colsNum, double* data);
 
-		int step;
-		for (int i = 0; i < rows; i++) {
+		//Destructor.
+		~Image();
 
-			step = i * cols;
-			for (int j = 0; j < cols; j++) {
+#pragma endregion
 
-				this->data[step + j] = matrix[i][j];
-			}
-		}
+#pragma region Operators
 
-		if (normalize) {
-			uchar* temp = LinearNormalization<T, uchar>(rows*cols, this->data, 0, 255);
-			delete[] this->data;
+		//Assignment operator.
+		Image& operator =(Image other);
 
-			this->data = temp;
-		}
+		/*Возможно когда-нибудь доделаю
+		Image& operator -(const Image& other);						//вычитание для ленивых
+		Image& operator +(const Image& other);						//сложение для ленивых
+		*/
+
+#pragma endregion
+
+#pragma region Geters
+
+		//Get uchar* data(copy!).
+		uchar* GetData() const;
+
+		//Get double* data.
+		double* GetDataD() const;
+
+		//Get rows number.
+		int GetRowsNumber() const;
+
+		//Get columns number.
+		int GetColsNumber() const;
+
+		//Get rows number * columns number.
+		int GetSize() const;
+
+		//Get pixel value at [row][col].
+		uchar GetValueAt(int row, int col) const;
+
+		//Get min pixel value.
+		uchar GetMinValue() const;
+
+		//Get max pixel value.
+		uchar GetMaxValue() const;
+
+		//Convert image to Mat and return.
+		cv::Mat GetMat() const;
+
+		//Get copy of image with different size. (not recomended)
+		Image GetScaledImage(double scale) const;
+
+		//Get normalized copy of image data.
+		uchar* GetNormalizedImageDataUC() const;
+
+		//Get normalized copy of image data.
+		double* GetNormalizedImageDataD() const;
+
+		//Get normalized copy of image.
+		Image GetNormalizedImage() const;
+
+		//Get rotated copy of image.
+		Image GetRotatedImage(double angle) const;
+
+#pragma endregion
+
+#pragma region Seters
+
+		//Set pixel value by [row][col].
+		void SetValueAt(int row, int col, uchar value);
+
+#pragma endregion
+
+#pragma region Methods
+
+		//Print every pixel value in console.
+		void Print() const;
+
+		//Check is image set or empty.
+		bool IsEmpty() const;
+
+		//Change image size. (not recomended)
+		void ScaleImage(double scale);
+
+		//Normalize image.
+		void NormalizeImage();
+
+		//Rotate image by *** angle.
+		void RotateImage(double angle);
+
+		//Calculate absolute differense of two images and return result as image.
+		Image CalcAbsoluteDiff(const Image&img2) const;
+
+		//Insert other image into this image.
+		void InsertImage(const Image &other, int posX, int posY) const;
+
+		//cut out image's part
+		Image CutOutImage(int row0, int col0, int row1, int col1) const;
+
+		//Swap this image and other image.
+		void Swap(Image& other);
+
+#pragma endregion
+
+	};
+
+	//Get rows number.
+	inline int Image::GetRowsNumber()  const {
+
+		return this->rowsNum;
 	}
-	else {
 
-		std::cout << "Image(int rows, int cols, const uchar ** matrix): Empty array given, using default." << endl;
-		this->data = NULL;
-		this->cols = 0;
-		this->rows = 0;
+	//Get columns number.
+	inline int Image::GetColsNumber() const {
+
+		return this->colsNum;
 	}
-}
 
-template<typename T>
-Image::Image(int rows, int cols, T * matrix, bool normalize) {
+	//Get rows number * columns number.
+	inline int Image::GetSize() const {
 
-	this->rows = rows;
-	this->cols = cols;
-
-	if (cols > 0 && rows > 0 && matrix != NULL) {
-
-
-		this->data = new uchar[cols*rows];
-		int size = rows * cols;
-
-		if (normalize) {
-
-			this->data = LinearNormalization<T, uchar>(size, matrix, 0, 255);
-		}
-		else {
-			for (int i = 0; i < size; i++) {
-
-				this->data[i] = matrix[i];
-			}
-		}
+		return rowsNum * colsNum;
 	}
-	else {
 
-		std::cout << "Image(int rows, int cols, const uchar * matrix): Empty array given, using default." << endl;
-		this->data = NULL;
-		this->cols = 0;
-		this->rows = 0;
+	//Get pixel value at [row][col].
+	inline uchar Image::GetValueAt(int row, int col)  const {
+
+		return this->data[row * colsNum + col];
 	}
-}
 
-template<typename srcT, typename dstT>
-static dstT * Image::LinearNormalization(int dataSize, srcT* data, dstT newMin, dstT newMax) {
+	//Set pixel value by [row][col].
+	inline void Image::SetValueAt(int row, int col, uchar value) {
 
-	if (dataSize != 0 && data != NULL) {
-
-		double min = data[0], max = data[0], k;
-
-		for (int i = 0; i < dataSize; i++) {
-			if (data[i] > max) {
-				max = data[i];
-			}
-			
-			if (data[i] < min) {
-				min = data[i];
-			}
-		}
-
-		k = (newMax - newMin) / (max - min);
-
-		dstT* result = new dstT[dataSize];
-
-		for (int i = 0; i < dataSize; i++) {
-
-			result[i] = (dstT)((data[i] - min)*k + newMin);
-		}
-
-		return result;
+		this->data[row * colsNum + col] = value;
 	}
-	else {
-		return NULL;
+
+	//Check is image set or empty.
+	inline bool Image::IsEmpty() const {
+
+		return data == NULL;
 	}
+
 }
