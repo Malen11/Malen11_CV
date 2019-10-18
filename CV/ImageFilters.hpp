@@ -38,10 +38,10 @@ namespace CV_labs {
 		static const double PI() { return std::atan(1.0) * 4; }
 
 		//Apply filter from core to image
-		static Image ApplyFilter(Image& image, Core core, int interpolateType = kInterpolateZero);
+		static Image ApplyFilter(const Image& image, Core core, int interpolateType = kInterpolateZero);
 
 		//Apply filter from core to image
-		static Image ApplyFilter(Image& image, SeparableCore core, int interpolateType = kInterpolateZero);
+		static Image ApplyFilter(const Image& image, SeparableCore core, int interpolateType = kInterpolateZero);
 
 		//Apply filter from core to image data
 		static double* ApplyFilterRaw(int rows, int cols, double* data, Core core, int interpolateType = kInterpolateZero);
@@ -50,7 +50,7 @@ namespace CV_labs {
 		static double* ApplyFilterRaw(int rows, int cols, double* data, SeparableCore core, int interpolateType = kInterpolateZero);
 
 		//Calculate gradient value to image
-		static Image CalculateGradientValue(Image& image, int partDerivativeType = kPartDerivativeTypeSobelCore, int interpolateType = kInterpolateZero);
+		static Image CalculateGradientValue(const Image& image, int partDerivativeType = kPartDerivativeTypeSobelCore, int interpolateType = kInterpolateZero);
 
 		//Calculate gradient value to image data
 		static double* CalculateGradientValueRaw(int rows, int cols, double* data, int partDerivativeType = kPartDerivativeTypeSobelCore,int interpolateType = kInterpolateZero);

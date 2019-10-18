@@ -49,13 +49,13 @@ Image::Image(cv::Mat img, int type) {
 		break;
 	case kRGB2GRAY_NTSC:
 		for (int i = 0; i < size; i++) {
-			this->data[i] = 0.299*matData[3 * i + 2] + 0.587*matData[3 * i + 1] + 0.114*matData[3 * i];
+			this->data[i] = 0.299 * matData[3 * i + 2] + 0.587 * matData[3 * i + 1] + 0.114 * matData[3 * i];
 		}
 
 		break;
 	default:
 		for (int i = 0; i < size; i++) {
-			this->data[i] = 0.213*matData[3 * i + 2] + 0.715*matData[3 * i + 1] + 0.072*matData[3 * i];
+			this->data[i] = 0.213 * matData[3 * i + 2] + 0.715 * matData[3 * i + 1] + 0.072 * matData[3 * i];
 		}
 
 		break;
@@ -109,10 +109,8 @@ CV_labs::Image::Image(int rowsNum, int colsNum, double * data) {
 
 	for (int i = 0; i < size; i++) {
 
-		this->data[i] = data[i] * 256;
+		this->data[i] = data[i] * 255;
 	}
-	if (this->data[0] == 0 || this->data[5])
-		int ggg = 0;
 }
 
 //Destructor.
@@ -295,6 +293,9 @@ Image Image::GetScaledImage(double scale) const {
 			for (int j = 0; j < result.colsNum; j++) {
 
 				result.data[i * result.colsNum + j] = this->data[(int)round(i / scale) * this->colsNum + (int)round(j / scale)];
+				/*if (result.data[i * result.colsNum + j] == 0) {
+					int stop = 1;
+				}*/
 			}
 		}
 

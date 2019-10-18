@@ -13,6 +13,16 @@ namespace CV_labs {
 
 #pragma endregion
 
+#pragma region Point Struct
+
+	struct Point {
+		
+		int x;
+		int y;
+	};
+
+#pragma endregion
+
 	//Class for storing image
 	class Image {
 
@@ -79,7 +89,10 @@ namespace CV_labs {
 		int GetSize() const;
 
 		//Get pixel value at [row][col].
-		uchar GetValueAt(int row, int col) const;
+		uchar GetValueAt(int row, int col) const; 
+
+		//Get pixel value at [point.row][point.col].
+		uchar GetValueAt(Point point)  const;
 
 		//Get min pixel value.
 		uchar GetMinValue() const;
@@ -109,8 +122,11 @@ namespace CV_labs {
 
 #pragma region Seters
 
-		//Set pixel value by [row][col].
+		//Set pixel value at [row][col].
 		void SetValueAt(int row, int col, uchar value);
+
+		//Set pixel value at [point.row][point.col].
+		void SetValueAt(Point point, uchar value);
 
 #pragma endregion
 
@@ -137,8 +153,14 @@ namespace CV_labs {
 		//Insert other image into this image.
 		void InsertImage(const Image &other, int posX, int posY) const;
 
+		//Insert other image into this image.
+		void InsertImage(const Image &other, Point point) const;
+
 		//cut out image's part
 		Image CutOutImage(int row0, int col0, int row1, int col1) const;
+
+		//cut out image's part
+		Image CutOutImage(Point point0, Point point1) const;
 
 		//Swap this image and other image.
 		void Swap(Image& other);
@@ -171,10 +193,22 @@ namespace CV_labs {
 		return this->data[row * colsNum + col];
 	}
 
-	//Set pixel value by [row][col].
+	//Get pixel value at [point.row][point.col].
+	inline uchar Image::GetValueAt(Point point)  const {
+
+		return this->data[point.y * colsNum + point.x];
+	}
+
+	//Set pixel value at [row][col].
 	inline void Image::SetValueAt(int row, int col, uchar value) {
 
 		this->data[row * colsNum + col] = value;
+	}
+
+	//Set pixel value at [point.row][point.col].
+	inline void Image::SetValueAt(Point point, uchar value) {
+
+		this->data[point.y * colsNum + point.x] = value;
 	}
 
 	//Check is image set or empty.
@@ -183,4 +217,15 @@ namespace CV_labs {
 		return data == NULL;
 	}
 
+	//Insert other image into this image
+	inline void CV_labs::Image::InsertImage(const Image & other, Point point) const
+	{
+		InsertImage(other, point.y, point.x);
+	}
+
+	//cut out image's part
+	inline Image CV_labs::Image::CutOutImage( Point point0, Point point1) const
+	{
+		return CutOutImage(point0.y, point0.x, point1.y, point1.x);
+	}
 }

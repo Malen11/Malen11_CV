@@ -1,155 +1,100 @@
 #include "stdafx.h"
 #include "ImagePyramid.hpp"
 
-//using namespace std;
-//using namespace CV_labs;
-//
-//#pragma region Constructors & Destructor
-//
-////Default constructor.
-////Set all data as 0/null.
-//ImagePyramid::ImagePyramid() {
-//	
-//	octavesNum		= 0;
-//	layersNum		= 0;
-//	sigmaA			= 0.;
-//	sigma0			= 0.;
-//
-//	images			= NULL;
-//	imagesNum		= 0;
-//
-//	sigmaInterval	= 0.;
-//}
-//
-////Basic constructor.
-////Using ImagePyramidParams for set property values.
-//ImagePyramid::ImagePyramid(Image img, ImagePyramidParams params) {
-//
-//	if (img.IsEmpty() == false && params.IsValid()) {
-//
-//		this->octavesNum			= params.setDefaultOctavesNum ? std::min(std::log2(img.GetRowsNumber()), std::log2(img.GetColsNumber())) : params.octavesNum;
-//		this->layersNum				= params.layersNum;
-//		this->layersAdditionalNum	= layersAdditionalNum;
-//		this->imagesNum				= octavesNum * (1 + layersNum + layersAdditionalNum);
-//		this->images				= new Image[imagesNum];
-//		this->sigma0				= sigma0;
-//		this->sigmaA				= sigmaA;
-//		this->sigmaInterval			= std::pow(2, 1. / layersNum);
-//		//this->sigmaArray = new double[imagesNum];
-//	}
-//	else if (params.IsValid() == false) {
-//		throw std::invalid_argument(params.GetError());
-//	}
-//	else {
-//		throw std::invalid_argument("Image is empty, must be filled");
-//	}
-//}
-//
-//ImagePyramid::ImagePyramid(Image img, int octavesNum, int layersNum, double sigmaA, double sigma0, int layersAdditionalNum) {
-//
-//	if (octavesNum <= 0)
-//		throw std::invalid_argument("octavesNum must be >= 0");
-//	if (layersNum <= 0)
-//		throw std::invalid_argument("layersNum must be >= 0");
-//	if (sigma0 <= 0)
-//		throw std::invalid_argument("sigma0 must be != 0");
-//
-//	this->octavesNum = octavesNum;
-//	this->layersNum = layersNum;
-//	this->layersAdditionalNum = layersAdditionalNum;
-//	this->imagesNum = octavesNum * (1 + layersNum + layersAdditionalNum);
-//	this->images = new Image[imagesNum];
-//	this->sigma0 = sigma0;
-//	this->sigmaA = sigmaA;
-//	this->sigmaArray = new double[imagesNum];
-//	this->sigmaInterval = std::pow(2, 1. / layersNum);
-//	
-//	double sigmaLocal, sigmaReal;
-//	int octavePos;
-//
-//	for (int i = 0; i < octavesNum; i++) {
-//
-//		octavePos = i * (1+layersNum + layersAdditionalNum);
-//
-//		if (i == 0) {
-//
-//			images[0] = ComputerVision::GaussDefault(img, sqrt(sigma0*sigma0 - sigmaA * sigmaA),ComputerVision::kInterpolateReflection);
-//			sigmaLocal = sigmaReal = sigmaArray[0] = sigma0;
-//		}
-//		else {
-//
-//			images[octavePos] = images[octavePos - 1- layersAdditionalNum].GetDownsampleImage(2);
-//			sigmaReal = sigmaArray[octavePos] = 2 * sigmaArray[octavePos - 1 - (layersNum + layersAdditionalNum)];
-//			sigmaLocal = sigma0;
-//		}
-//
-//
-//		for (int j = 1; j <= layersNum + layersAdditionalNum; j++) {
-//
-//			images[octavePos + j] = ComputerVision::GaussDefault(images[octavePos + j - 1], sqrt(pow(sigmaLocal*sigmaInterval, 2) - pow(sigmaLocal, 2)), ComputerVision::kInterpolateReflection);
-//
-//			sigmaLocal *= sigmaInterval;
-//			sigmaReal *= sigmaInterval;
-//			sigmaArray[octavePos + j] = sigmaReal;
-//		}
-//	}
-//}
-//
-//ImagePyramid::ImagePyramid(Image img, int layersNum, double sigmaA, double sigma0, int layersAdditionalNum)
-//	:ImagePyramid(img, std::min(std::log2(img.GetRowsNumber()), std::log2(img.GetColsNumber())), layersNum, sigmaA, sigma0, layersAdditionalNum) {
-//}
-//
-//
-//ImagePyramid::~ImagePyramid() {
-//
-//}
-//
-//#pragma endregion
-//
-//Image ImagePyramid::GetImage(int octave, int layer) const {
-//
-//	int pos = octave * (layersNum+1+layersAdditionalNum) + layer;
-//
-//	if (pos >= imagesNum || octave >= octavesNum || layer >= (1+layersNum+layersAdditionalNum)) {
-//		throw std::out_of_range("Called not existend Image");
-//	}
-//
-//	return images[pos];
-//}
+using namespace std;
+using namespace CV_labs;
+
+#pragma region Constructors & Destructor
+
+//Default constructor.
+ImagePyramid::ImagePyramid(const Image& image, double sigmaA, double sigma0, int octavesNum, int layersNum) {
+
+	if (octavesNum <= 0)
+		throw std::invalid_argument("octavesNum must be >= 0");
+	if (layersNum <= 0)
+		throw std::invalid_argument("layersNum must be >= 0");
+	if (sigma0 <= 0)
+		throw std::invalid_argument("sigma0 must be != 0");
+
+	this->octavesNum	= octavesNum;
+	this->layersNum		= layersNum;
+	this->imagesNum		= octavesNum * (layersNum + 1);//lyersNum + base layer image
+	this->images		= new Image[imagesNum];
+	this->sigmaA		= sigmaA;
+	this->sigma0		= sigma0;
+	//this->realSigmas	= new double[imagesNum];
+
+	this->sigmaInterval = std::pow(2, 1. / layersNum);
+	double sigmaLocal, sigmaReal;
+	int pos;
+
+	//Blur image to sigma0
+	images[0] = ImageFilters::ApplyFilter(image, ImageFilters::GenerateGaussSeparableCore(sqrt(sigma0 * sigma0 - sigmaA * sigmaA)), ImageFilters::kInterpolateReflection);
+	sigmaReal = sigmaLocal = sigma0;
+
+	for (int i = 0; i < octavesNum; i++) {
+
+		//+1 because each level have layersNum images + original layer image
+		for (int j = 1; j < layersNum + 1; j++) {
+
+			pos = i * (layersNum + 1) + j;
+
+			images[pos] = ImageFilters::ApplyFilter(
+				images[pos - 1],
+				ImageFilters::GenerateGaussSeparableCore(sqrt(pow(sigmaLocal * sigmaInterval, 2) - pow(sigmaLocal, 2))),
+				ImageFilters::kInterpolateReflection
+			); 
+
+			sigmaLocal *= sigmaInterval;
+			sigmaReal *= sigmaInterval;
+		}
+
+		//if we have next octave, we downsample image
+		if (i < octavesNum - 1) {
+
+			//save downsample image in next position
+			++pos;
+
+			images[pos]	= images[pos - 1].GetScaledImage(0.5);
+			sigmaLocal	= sigma0;
+		}
+	}
+}
+
+ImagePyramid::ImagePyramid(const Image& img, double sigmaA, double sigma0, int layersNum)
+	:ImagePyramid(img, sigmaA, sigma0, std::min(std::log2(img.GetRowsNumber()), std::log2(img.GetColsNumber())), layersNum) {
+}
+
+ImagePyramid::~ImagePyramid() {
+
+}
+
+//Get image by sigma
+Image ImagePyramid::GetImage(double sigma) const {
+
+	int pos = getImageIndex(sigma);
+
+	return images[pos];
+}
+
+//Get image at octave and layer
+Image ImagePyramid::GetImage(int octave, int layer) const {
+
+	if (octave >= octavesNum) {
+		throw new std::invalid_argument("Try to get image at nonexistent octave");
+	}
+	if (layer >= layersNum) {
+		throw new std::invalid_argument("Try to get image at nonexistent layer");
+	}
+
+	return images[octave * (layersNum + 1) + layer];
+}
+
+#pragma endregion
 //
 //Image ImagePyramid::GetNearestImage(double sigma) {
 //
 //	return images[FindNearestSigma(sigma)];
-//}
-//
-//int ImagePyramid::GetOctavesNum() const {
-//	
-//	return octavesNum;
-//}
-//
-//int ImagePyramid::GetLayersNum() const {
-//
-//	return layersNum;
-//}
-//
-//int ImagePyramid::GetLayersAdditionalNum() const {
-//
-//	return layersAdditionalNum;
-//}
-//
-//int ImagePyramid::GetImagesNum() const {
-//
-//	return imagesNum;
-//}
-//
-//double ImagePyramid::GetSigma0() const {
-//	
-//	return sigma0;
-//}
-//
-//double ImagePyramid::GetSigmaInterval() const {
-//
-//	return sigmaInterval;
 //}
 //
 //uchar ImagePyramid::L(int x, int y, double sigma) {

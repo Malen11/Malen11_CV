@@ -4,7 +4,7 @@
 using namespace std;
 using namespace CV_labs;
 
-Image ImageFilters::ApplyFilter(Image & image, Core core, int interpolateType) {
+Image ImageFilters::ApplyFilter(const Image & image, Core core, int interpolateType) {
 	
 	double* data = image.GetDataD();
 
@@ -24,7 +24,7 @@ Image ImageFilters::ApplyFilter(Image & image, Core core, int interpolateType) {
 	return result;
 }
 
-Image ImageFilters::ApplyFilter(Image & image, SeparableCore core, int interpolateType) {
+Image ImageFilters::ApplyFilter(const Image & image, SeparableCore core, int interpolateType) {
 
 	double* data = image.GetDataD();
 
@@ -87,7 +87,7 @@ double * CV_labs::ImageFilters::ApplyFilterRaw(int rows, int cols, double * data
 	return result;
 }
 
-Image CV_labs::ImageFilters::CalculateGradientValue(Image& image, int partDerivativeType, int interpolateType) {
+Image CV_labs::ImageFilters::CalculateGradientValue(const Image& image, int partDerivativeType, int interpolateType) {
 
 	double * data = image.GetDataD();
 
@@ -147,7 +147,7 @@ double * CV_labs::ImageFilters::NormalizeData(int size, double * data) {
 
 	double min, max, k;
 
-	if (data == NULL || size == NULL) {
+	if (data == NULL || size == 0) {
 
 		throw std::invalid_argument("Data is empty");
 	}

@@ -167,6 +167,34 @@ void lab2() {
 	test.NormalizeImage();
 	imshow("Base image", test.GetMat());
 
+	ImagePyramid imagePyramid(test, 0, 1.5, 3);
+
+	//for(int i = 0; i < imagePyramid.GetOctavesNum(); i++) {
+	//	for (int j = 0; j < imagePyramid.GetLayersNum(); j++) {
+
+	//		string name = "octave " + std::to_string(i) + " layer " + std::to_string(j) + " sigma " + std::to_string(imagePyramid.GetImageSigma(i, j));
+	//		//imshow(name, imagePyramid.GetImage(i, j).GetMat());
+	//		cv::imwrite("pyramid/" + name + ".png", imagePyramid.GetImage(i, j).GetMat());
+	//	}
+	//}
+
+	double sigma = 1.5 * 8;
+	Image test2 = ImageFilters::ApplyFilter(test, ImageFilters::GenerateGaussSeparableCore(sigma), ImageFilters::kInterpolateReflection);
+
+	int cols = test2.GetColsNumber();
+	int rows = test2.GetRowsNumber();
+	uchar* imgFromPyr = new uchar[cols *rows];
+
+
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+
+			imgFromPyr[i * cols + j] = imagePyramid.L(i, j, sigma);
+		}
+	}
+	Image imgFromPyrRe(rows, cols, imgFromPyr);
+	imshow("smothed image", test2.GetMat());
+	imshow("rebuild image", imgFromPyrRe.GetMat());
 }
 
 //C:\Users\alist\Desktop\cv\Bikesgray.jpg
@@ -180,7 +208,7 @@ void lab2() {
 //C:\Users\alist\Desktop\cv\Valve_original_(1).PNG
 int main() {
 
-	lab1();
+	lab2();
 
 	//Mat mat1 = LoadImage();
 	//Image test1(mat1);
@@ -195,32 +223,6 @@ int main() {
 	//Image test2, test3, test4, test5;
 
 	
-	//lab 2
-
-	//ImagePyramid imgPyr(test,3, 3, 0.5, 1.5,2);
-	//uchar* testU = new uchar[1];
-
-	//test4 = test2.AbsoluteDiff(test2, test3);
-	//test4.NormalizeImage();
-
-	//imshow("2-4 layers", test4.AbsoluteDiff(test2, test3).GetMat());
-	
-	/*for (int i = 0; i < imgPyr.GetImagesNum(); i++) {
-
-		double sigma = imgPyr.GetSigma0()* pow(imgPyr.GetSigmaInterval(),i);
-
-		imshow("Sigma: " + std::to_string(sigma), imgPyr.GetNearestImage(sigma).GetMat());
-
-		waitKey();
-	}*/
-
-	/*for (int i = 0; i < imgPyr.GetOctavesNum(); i++) {
-		for (int j = 0; j <= imgPyr.GetLayersNum() +imgPyr.GetLayersAdditionalNum(); j++) {
-			//cv::imwrite("pyramid/Octave " + std::to_string(i) + " Layer " + std::to_string(j)+".png", imgPyr.GetImage(i, j).GetMat());
-			imshow("Octave: "+std::to_string(i)+" Layer: "+ std::to_string(j) + "Sigmas: " + std::to_string(imgPyr.sigmaArray[i*(imgPyr.GetLayersNum() + imgPyr.GetLayersAdditionalNum() +1)+j]), imgPyr.GetImage(i, j).GetMat());
-		}
-	}
-	*/
 
 	//lab 3
 	/*
