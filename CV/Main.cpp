@@ -167,18 +167,18 @@ void lab2() {
 	test.NormalizeImage();
 	imshow("Base image", test.GetMat());
 
-	ImagePyramid imagePyramid(test, 0, 1.5, 3);
+	ImagePyramid imagePyramid(test, 0, 1.5, 5);
 
-	//for(int i = 0; i < imagePyramid.GetOctavesNum(); i++) {
-	//	for (int j = 0; j < imagePyramid.GetLayersNum(); j++) {
+	for(int i = 0; i < imagePyramid.GetOctavesNum(); i++) {
+		for (int j = 0; j < imagePyramid.GetLayersNum(); j++) {
 
-	//		string name = "octave " + std::to_string(i) + " layer " + std::to_string(j) + " sigma " + std::to_string(imagePyramid.GetImageSigma(i, j));
-	//		//imshow(name, imagePyramid.GetImage(i, j).GetMat());
-	//		cv::imwrite("pyramid/" + name + ".png", imagePyramid.GetImage(i, j).GetMat());
-	//	}
-	//}
+			string name = "octave " + std::to_string(i) + " layer " + std::to_string(j) + " sigma " + std::to_string(imagePyramid.GetImageSigma(i, j));
+			//imshow(name, imagePyramid.GetImage(i, j).GetMat());
+			cv::imwrite("pyramid/" + name + ".png", imagePyramid.GetImage(i, j).GetMat());
+		}
+	}
 
-	double sigma = 1.5 * 8;
+	double sigma = 1.5 * 4 * 1.4;
 	Image test2 = ImageFilters::ApplyFilter(test, ImageFilters::GenerateGaussSeparableCore(sigma), ImageFilters::kInterpolateReflection);
 
 	int cols = test2.GetColsNumber();

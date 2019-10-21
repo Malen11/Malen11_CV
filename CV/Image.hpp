@@ -103,6 +103,12 @@ namespace CV_labs {
 		//Convert image to Mat and return.
 		cv::Mat GetMat() const;
 
+		//Get copy of image with lower size
+		Image GetDownsampledImage(double scale) const;
+
+		//Get copy of image with highter size
+		Image GetUpsampledImage(double scale) const;
+
 		//Get copy of image with different size. (not recomended)
 		Image GetScaledImage(double scale) const;
 
@@ -140,6 +146,12 @@ namespace CV_labs {
 
 		//Change image size. (not recomended)
 		void ScaleImage(double scale);
+
+		//Lower image
+		void DownsampleImage(double scale);
+
+		//Extend image
+		void UpsampleImage(double scale);
 
 		//Normalize image.
 		void NormalizeImage();

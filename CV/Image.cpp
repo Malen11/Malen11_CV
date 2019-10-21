@@ -277,38 +277,83 @@ Mat Image::GetMat() const {
 	}
 }
 
+//Get copy of image with lower size
+Image CV_labs::Image::GetDownsampledImage(double scale) const{
+
+	if (scale <= 1) {
+
+		throw std::invalid_argument("Scale must be greater then 1");
+	}
+	if (2 * scale > this->GetColsNumber() || 2 * scale > this->GetRowsNumber()) {
+
+		throw std::invalid_argument("Scale is bigger then half of one or many image dimensions");
+	}
+
+	Image result = Image();
+
+	result.rowsNum = (int)round(this->rowsNum / scale);
+	result.colsNum = (int)round(this->colsNum / scale);
+
+	result.data = new uchar[result.rowsNum * result.colsNum];
+
+	for (int i = 0; i < result.rowsNum; i++) {
+		for (int j = 0; j < result.colsNum; j++) {
+
+			result.data[i * result.colsNum + j] = this->data[(int)round(i * scale) * this->colsNum + (int)round(j * scale)];
+		}
+	}
+
+	return result;
+}
+
+//Get copy of image with highter size
+Image CV_labs::Image::GetUpsampledImage(double scale) const {
+
+	if (scale <= 1) {
+
+		throw std::invalid_argument("Scale must be greater then 1");
+	}
+
+	Image result = Image();
+
+	result.rowsNum = (int)round(this->rowsNum * scale);
+	result.colsNum = (int)round(this->colsNum * scale);
+
+	result.data = new uchar[result.rowsNum * result.colsNum];
+
+	for (int i = 0; i < result.rowsNum; i++) {
+		for (int j = 0; j < result.colsNum; j++) {
+
+			result.data[i * result.colsNum + j] = this->data[(int)round(i / scale) * this->colsNum + (int)round(j / scale)];
+		}
+	}
+
+	return result;
+}
+
 //Get copy of image with different size. (not recomended)
 Image Image::GetScaledImage(double scale) const {
 	
-	if (scale > 0 && data != NULL) {
-
-		Image result = Image();
-
-		result.rowsNum = (int)round(this->rowsNum * scale);
-		result.colsNum = (int)round(this->colsNum * scale);
-
-		result.data = new uchar[result.rowsNum * result.colsNum];
-
-		for (int i = 0; i < result.rowsNum; i++) {
-			for (int j = 0; j < result.colsNum; j++) {
-
-				result.data[i * result.colsNum + j] = this->data[(int)round(i / scale) * this->colsNum + (int)round(j / scale)];
-				/*if (result.data[i * result.colsNum + j] == 0) {
-					int stop = 1;
-				}*/
-			}
-		}
-
-		return result;
-	}
-	else if(scale > 0){
+	if (scale <= 0) {
 
 		throw std::invalid_argument("Scale must be greater then 0");
 	}
-	else {
 
-		throw std::invalid_argument("Image must not be empty");
+	Image result = Image();
+
+	result.rowsNum = (int)round(this->rowsNum * scale);
+	result.colsNum = (int)round(this->colsNum * scale);
+
+	result.data = new uchar[result.rowsNum * result.colsNum];
+
+	for (int i = 0; i < result.rowsNum; i++) {
+		for (int j = 0; j < result.colsNum; j++) {
+
+			result.data[i * result.colsNum + j] = this->data[(int)round(i / scale) * this->colsNum + (int)round(j / scale)];
+		}
 	}
+
+	return result;
 }
 
 //Get normalized copy of image data.
@@ -497,6 +542,14 @@ void Image::Print() const {
 void Image::ScaleImage(double scale) {
 
 	(*this) = this->GetScaledImage(scale);
+}
+
+void CV_labs::Image::DownsampleImage(double scale) {
+	(*this) = this->GetDownsampledImage(scale);
+}
+
+void CV_labs::Image::UpsampleImage(double scale) {
+	(*this) = this->GetDownsampledImage(scale);
 }
 
 //Normalize image.

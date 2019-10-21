@@ -58,11 +58,11 @@ namespace CV_labs {
 		//Get sigma at octave and layer
 		double GetImageSigma(int octave, int layer) const;
 
-		//Get pixel for sigma at row, col
-		uchar L(int row, int col, double sigma) const;
-
 		//Get pixel for sigma at point
 		uchar L(Point point, double sigma) const;
+
+		//Get pixel for sigma at row, col
+		uchar L(int row, int col, double sigma) const;
 
 		//Image L(double sigmaArray);
 	protected:

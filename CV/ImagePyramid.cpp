@@ -55,7 +55,7 @@ ImagePyramid::ImagePyramid(const Image& image, double sigmaA, double sigma0, int
 			//save downsample image in next position
 			++pos;
 
-			images[pos]	= images[pos - 1].GetScaledImage(0.5);
+			images[pos]	= images[pos - 1].GetDownsampledImage(2);
 			sigmaLocal	= sigma0;
 		}
 	}
