@@ -29,7 +29,6 @@ Image ImageFilters::ApplyFilter(const Image & image, SeparableCore core, int int
 	double* data = image.GetDataD();
 
 	//double* normalizedData = NormalizeData(image.GetSize(), data);
-
 	double* resultData = ApplyFilterRaw(image.GetRowsNumber(), image.GetColsNumber(), data, core, interpolateType);
 
 	double* normalizedResultData = NormalizeData(image.GetSize(), resultData);

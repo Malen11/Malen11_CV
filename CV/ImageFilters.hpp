@@ -105,28 +105,21 @@ namespace CV_labs {
 
 	inline double ImageFilters::GetVirtualPixel(int row, int col, int rows, int cols, double* data, int interpolateType) {
 
-		switch (interpolateType) {
-		case kInterpolateZero:
-
+		if (interpolateType == kInterpolateZero) {
 			return GetVirtualPixelZero(row, col, rows, cols, data);
-
-		case kInterpolateBorder:
-
-			return GetVirtualPixelBorder(row, col, rows, cols, data);
-
-		case kInterpolateReflection:
-
-			return GetVirtualPixelReflection(row, col, rows, cols, data);
-
-		case kInterpolateWrap:
-
-			return GetVirtualPixelWrap(row, col, rows, cols, data);
-
-		default:
-			break;
 		}
-
-		return NULL;
+		else if (interpolateType == kInterpolateBorder) {
+			return GetVirtualPixelBorder(row, col, rows, cols, data);
+		}
+		else if (interpolateType == kInterpolateReflection) {
+			return GetVirtualPixelReflection(row, col, rows, cols, data);
+		}
+		else if (interpolateType == kInterpolateWrap) {
+			return GetVirtualPixelWrap(row, col, rows, cols, data);
+		}
+		else {
+			throw new std::invalid_argument("Unexpected partDerivativeType value");
+		}
 	}
 
 	inline double ImageFilters::GetVirtualPixelZero(int row, int col, int rows, int cols, double* data) {

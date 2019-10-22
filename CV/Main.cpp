@@ -7,6 +7,7 @@
 #include "ImagePyramid.hpp"
 #include "ComputerVision.hpp"
 #include "ImageFilters.hpp"
+#include "ImageDetectors.hpp"
 
 using namespace std;
 using namespace cv;
@@ -99,19 +100,19 @@ Mat LoadImage() {
 }
 
 /** function MatPlotPoints */
-//cv::Mat MatPlotPoints(Image& img, vector<Dot> points, int color = 0) {
-//
-//	cv::Mat temp = img.GetMat();
-//	cv::Mat colored;
-//	cv::cvtColor(temp, colored, cv::COLOR_GRAY2BGR);
-//	
-//	for (vector<Dot>::iterator it = points.begin(); it != points.end(); it++) {
-//
-//		circle(colored, Point((*it).x, (*it).y), 1, CV_RGB(255, 0, 0), 3);
-//	}
-//
-//	return colored;
-//}
+cv::Mat MatPlotPoints(Image& img, vector<CV_labs::Point> points, int color = 0) {
+
+	cv::Mat temp = img.GetMat();
+	cv::Mat colored;
+	cv::cvtColor(temp, colored, cv::COLOR_GRAY2BGR);
+	
+	for (vector<CV_labs::Point>::iterator it = points.begin(); it != points.end(); it++) {
+
+		circle(colored, cv::Point((*it).x, (*it).y), 1, CV_RGB(255, 0, 0), 3);
+	}
+
+	return colored;
+}
 
 //cv::Mat MatPlotLines(Image& img, vector<PairDot> lines, int color = 0) {
 //
@@ -197,8 +198,52 @@ void lab2() {
 	imshow("rebuild image", imgFromPyrRe.GetMat());
 }
 
+void lab3() {
+
+	Mat mat = LoadImage();
+	Image base(mat);
+	base.NormalizeImage();
+	imshow("Base image", base.GetMat());
+
+	Image test1 = ImageFilters::ApplyFilter(base, ImageFilters::GenerateGaussSeparableCore(1.5), ImageFilters::kInterpolateReflection);
+	imshow("Base image gauss", test1.GetMat());
+	Image test2 = ImageFilters::ApplyFilter(base.GetRotatedImage(-0.2), ImageFilters::GenerateGaussSeparableCore(1.5), ImageFilters::kInterpolateReflection);
+	imshow("Rotate gauss!", test2.GetMat());
+
+	/*test2 = ComputerVision::Canny(test, 2, 6, 40, 30);
+	imshow("Canny", test2.GetMat());*/
+
+	//vector<CV_labs::Point> points = ImageDetectors::Moravec(base, 3, 1, 3, 0.02);
+	//imshow("Moravec Points base", MatPlotPoints(base, points));
+
+	//vector<CV_labs::Point> points1 = ImageDetectors::Moravec(test1, 3, 1, 3, 0.02);
+	//imshow("Moravec Points gauss", MatPlotPoints(test1, points1));
+
+	//vector<CV_labs::Point> points2 = ImageDetectors::Moravec(test2, 3, 1, 3, 0.02);
+	//imshow("Moravec Points gauss rotated", MatPlotPoints(test2, points2));
+
+	/*double* data = test1.GetNormalizedImageDataD();
+	double* partDerX = ImageFilters::ApplyFilterRaw(test1.GetRowsNumber(), test1.GetColsNumber(), data, ImageFilters::GenerateSobelSeparableCore(ImageFilters::kPartDerivativeDirectionX), ImageFilters::kInterpolateBorder);
+	partDerX = ImageFilters::NormalizeData(test1.GetRowsNumber() * test1.GetColsNumber(), partDerX);
+	Image partDerXImg(test1.GetRowsNumber(), test1.GetColsNumber(), partDerX);
+	imshow("partDerXImg", partDerXImg.GetMat());*/
+
+	vector<CV_labs::Point> pointsThresh1 = ImageDetectors::Harris(test1, 5, 5, 0.03);
+	imshow("Harris Points (Thresh)", MatPlotPoints(test1, pointsThresh1));
+
+	vector<CV_labs::Point> pointsANMS1 = ImageDetectors::Harris(test1, 5, 5, 0.03, 40);
+	imshow("Harris Points (ANMS)", MatPlotPoints(test1, pointsANMS1));
+
+
+	vector<CV_labs::Point> pointsThresh2 = ImageDetectors::Harris(test2, 5, 5, 0.03);
+	imshow("Harris Points rotate (Thresh)", MatPlotPoints(test2, pointsThresh2));
+
+	vector<CV_labs::Point> pointsANMS2 = ImageDetectors::Harris(test2, 5, 5, 0.03, 40);
+	imshow("Harris Points rotate (ANMS)", MatPlotPoints(test2, pointsANMS2));
+}
 //C:\Users\alist\Desktop\cv\Bikesgray.jpg
 //C:\Users\alist\Desktop\cv\obj.jpg
+//C:\Users\alist\Desktop\cv\star.jpg
 //C:\Users\alist\Desktop\cv\Lena2.jpg
 //C:\Users\alist\Desktop\cv\Lena2lheight.jpg
 //C:\Users\alist\Desktop\cv\Lena2contrast.jpg
@@ -208,7 +253,7 @@ void lab2() {
 //C:\Users\alist\Desktop\cv\Valve_original_(1).PNG
 int main() {
 
-	lab2();
+	lab3();
 
 	//Mat mat1 = LoadImage();
 	//Image test1(mat1);
@@ -222,34 +267,6 @@ int main() {
 
 	//Image test2, test3, test4, test5;
 
-	
-
-	//lab 3
-	/*
-	//test2 = ComputerVision::Canny(test, 2, 6, 40, 30);
-	//imshow("Canny", test2.GetMat());
-
-	test2 = ComputerVision::GaussDefault(test, 1);
-	vector<Dot> pointsThresh = ComputerVision::Harris(test,3,3,0.03);
-	imshow("Harris Points (Thresh)", MatPlotPoints(test, pointsThresh));
-
-	vector<Dot> pointsANMS = ComputerVision::Harris(test, 3, 3, 0.03, 40);
-	imshow("Harris Points (ANMS)", MatPlotPoints(test, pointsANMS));
-
-
-	test3 = ComputerVision::GaussDefault(test1, 1);
-	pointsThresh = ComputerVision::Harris(test1, 3, 3, 0.03);
-	imshow("Harris Points 1 (Thresh)", MatPlotPoints(test1, pointsThresh));
-
-	pointsANMS = ComputerVision::Harris(test1, 3, 3, 0.03, 40);
-	imshow("Harris Points 1 (ANMS)", MatPlotPoints(test1, pointsANMS));
-	
-	//test.RotateImage(-0.2);
-	//imshow("rotate!", test.GetMat());
-	
-	//vector<Dot> points = ComputerVision::Moravec(test, 3, 1,3,0.02);
-	//imshow("Moravec Points", MatPlotPoints(test, points));
-	*/
 
 	//lab 4-5
 

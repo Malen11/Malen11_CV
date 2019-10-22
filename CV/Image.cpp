@@ -306,7 +306,7 @@ Image CV_labs::Image::GetDownsampledImage(double scale) const{
 	return result;
 }
 
-//Get copy of image with highter size
+//Get copy of image with highter size (probably buged, image move to left)
 Image CV_labs::Image::GetUpsampledImage(double scale) const {
 
 	if (scale <= 1) {
@@ -324,7 +324,7 @@ Image CV_labs::Image::GetUpsampledImage(double scale) const {
 	for (int i = 0; i < result.rowsNum; i++) {
 		for (int j = 0; j < result.colsNum; j++) {
 
-			result.data[i * result.colsNum + j] = this->data[(int)round(i / scale) * this->colsNum + (int)round(j / scale)];
+			result.data[i * result.colsNum + j] = this->data[std::min((int)round(i / scale), this->rowsNum - 1) * this->colsNum + std::min((int)round(j / scale), this->colsNum - 1)];
 		}
 	}
 
@@ -400,36 +400,33 @@ double* Image::GetNormalizedImageDataD() const {
 	int dataSize = this->GetSize();
 	double min, max, k;
 
-	if (data != NULL) {
-
-		min = max = data[0];
-
-		for (int i = 0; i < dataSize; i++) {
-
-			if (data[i] > max) {
-				max = data[i];
-			}
-
-			if (data[i] < min) {
-				min = data[i];
-			}
-		}
-
-		k = 1 / (max - min);
-
-		double* result = new double[dataSize];
-
-		for (int i = 0; i < dataSize; i++) {
-
-			result[i] = (double)(data[i] - min) * k;
-		}
-
-		return result;
-	}
-	else {
-
+	if (data == NULL) {
 		throw std::invalid_argument("Image must not be empty");
 	}
+		
+	min = max = data[0];
+
+	for (int i = 0; i < dataSize; i++) {
+
+		if (data[i] > max) {
+			max = data[i];
+		}
+
+		if (data[i] < min) {
+			min = data[i];
+		}
+	}
+
+	k = 1 / (max - min);
+
+	double* result = new double[dataSize];
+
+	for (int i = 0; i < dataSize; i++) {
+
+		result[i] = (double)(data[i] - min) * k;
+	}
+
+	return result;
 }
 
 //Get normalized copy of image.
