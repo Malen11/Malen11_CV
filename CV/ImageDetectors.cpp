@@ -127,6 +127,7 @@ std::vector<Point> ImageDetectors::MoravecRaw(int rows, int cols, double * data,
 	return result;
 }
 
+//apply Harris to Image
 std::vector<Point> ImageDetectors::Harris(Image & image, int wk, int localMinK, double Threshold, int pointsNeeded, int PartDerivativeType) {
 
 	double* data = image.GetNormalizedImageDataD();
@@ -137,6 +138,7 @@ std::vector<Point> ImageDetectors::Harris(Image & image, int wk, int localMinK, 
 	return result;
 }
 
+//apply Harris to Image data
 std::vector<Point> ImageDetectors::HarrisRaw(int rows, int cols, double * data, int wk, int localMinK, double Threshold, int pointsNeeded, int PartDerivativeType) {
 
 	int size = rows * cols;
@@ -279,6 +281,7 @@ std::vector<Point> ImageDetectors::HarrisRaw(int rows, int cols, double * data, 
 	return result;
 }
 
+//calculate response for Harris
 double * ImageDetectors::HarrisResponse(int rows, int cols, double * A, double * B, double * C, int harrisResponseType) {
 
 	int size = rows * cols;

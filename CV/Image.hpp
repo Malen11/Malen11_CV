@@ -13,12 +13,18 @@ namespace CV_labs {
 
 #pragma endregion
 
-#pragma region Point Struct
+#pragma region  Struct Point, Line
 
 	struct Point {
 		
 		int x;
 		int y;
+	};
+
+	struct Line {
+
+		Point pointA;
+		Point pointB;
 	};
 
 #pragma endregion

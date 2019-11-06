@@ -19,6 +19,13 @@ namespace CV_labs {
 		Core Y;
 	};
 
+	//Gradient (for filter's functions)
+	struct Gradient {
+
+		double value;
+		double phi;
+	};
+
 	//class, that contains filters for images
 	class ImageFilters {
 	public:
@@ -55,6 +62,9 @@ namespace CV_labs {
 		//Calculate gradient value to image data
 		static double* CalculateGradientValueRaw(int rows, int cols, double* data, int partDerivativeType = kPartDerivativeTypeSobelCore,int interpolateType = kInterpolateZero);
 
+		//Calculate gradient value and angle to image data
+		static Gradient* CalculateGradientRaw(int rows, int cols, double* data, int partDerivativeType = kPartDerivativeTypeSobelCore, int interpolateType = kInterpolateZero);
+
 		static double* NormalizeData(int size, double* data);
 
 		//Create Gauss core
@@ -87,23 +97,38 @@ namespace CV_labs {
 		//Create Scharr core for gradient
 		static SeparableCore GenerateScharrSeparableCore(int PartDerivativeDirection);
 
-		//Calculate virtual pixel for interpolation 
-		static double GetVirtualPixel(int row, int col, int rows, int cols, double* data, int interpolateType = kInterpolateZero);
+		//Calculate virtual pixel value for interpolation 
+		static double GetVirtualPixel(int row, int col, int rows, int cols, const double* const data, int interpolateType = kInterpolateZero);
 
-		//Calculate virtual pixel for interpolation 
-		static double GetVirtualPixelZero(int row, int col, int rows, int cols, double* data);
+		//Calculate virtual pixel value for interpolation 
+		static double GetVirtualPixelZero(int row, int col, int rows, int cols, const double* const data);
 
-		//Calculate virtual pixel for interpolation 
-		static double GetVirtualPixelBorder(int row, int col, int rows, int cols, double* data);
+		//Calculate virtual pixel value for interpolation 
+		static double GetVirtualPixelBorder(int row, int col, int rows, int cols, const double* const data);
 		
-		//Calculate virtual pixel for interpolation 
-		static double GetVirtualPixelReflection(int row, int col, int rows, int cols, double* data);
+		//Calculate virtual pixel value for interpolation 
+		static double GetVirtualPixelReflection(int row, int col, int rows, int cols, const double* const data);
 
-		//Calculate virtual pixel for interpolation 
-		static double GetVirtualPixelWrap(int row, int col, int rows, int cols, double* data);
+		//Calculate virtual pixel value for interpolation 
+		static double GetVirtualPixelWrap(int row, int col, int rows, int cols, const double* const data);
+
+		//Calculate virtual pixel gradient value for interpolation 
+		static Gradient GetVirtualPixelGradient(int row, int col, int rows, int cols, const Gradient* const data, int interpolateType = kInterpolateZero);
+
+		//Calculate virtual pixel gradient value for interpolation 
+		static Gradient GetVirtualPixelGradientZero(int row, int col, int rows, int cols, const Gradient* const data);
+
+		//Calculate virtual pixel gradient value for interpolation 
+		static Gradient GetVirtualPixelGradientBorder(int row, int col, int rows, int cols, const Gradient* const data);
+
+		//Calculate virtual pixel gradient value for interpolation 
+		static Gradient GetVirtualPixelGradientReflection(int row, int col, int rows, int cols, const Gradient* const data);
+
+		//Calculate virtual pixel gradient value for interpolation 
+		static Gradient GetVirtualPixelGradientWrap(int row, int col, int rows, int cols, const Gradient* const data);
 	};
 
-	inline double ImageFilters::GetVirtualPixel(int row, int col, int rows, int cols, double* data, int interpolateType) {
+	inline double ImageFilters::GetVirtualPixel(int row, int col, int rows, int cols, const double* const data, int interpolateType) {
 
 		if (interpolateType == kInterpolateZero) {
 			return GetVirtualPixelZero(row, col, rows, cols, data);
@@ -122,7 +147,7 @@ namespace CV_labs {
 		}
 	}
 
-	inline double ImageFilters::GetVirtualPixelZero(int row, int col, int rows, int cols, double* data) {
+	inline double ImageFilters::GetVirtualPixelZero(int row, int col, int rows, int cols, const double* const data) {
 
 		if (row >= 0 && row < rows - 1 && col >= 0 && col < cols - 1)
 			return data[row * cols + col];
@@ -130,7 +155,7 @@ namespace CV_labs {
 		return 0;
 	}
 
-	inline double ImageFilters::GetVirtualPixelBorder(int row, int col, int rows, int cols, double* data) {
+	inline double ImageFilters::GetVirtualPixelBorder(int row, int col, int rows, int cols, const double* const data) {
 
 		if (row >= 0 && row < rows - 1 && col >= 0 && col < cols - 1)
 			return data[row * cols + col];
@@ -138,7 +163,7 @@ namespace CV_labs {
 		return data[std::min(rows - 1, std::max(row, 0)) *cols + std::min(cols - 1, std::max(col, 0))];
 	}
 
-	inline double ImageFilters::GetVirtualPixelReflection(int row, int col, int rows, int cols, double* data) {
+	inline double ImageFilters::GetVirtualPixelReflection(int row, int col, int rows, int cols, const double* const data) {
 
 		if (row >= 0 && row < rows - 1 && col >= 0 && col < cols - 1)
 			return data[row * cols + col];
@@ -159,7 +184,71 @@ namespace CV_labs {
 		return data[trow * cols + tcol];
 	}
 
-	inline double ImageFilters::GetVirtualPixelWrap(int row, int col, int rows, int cols, double* data) {
+	inline double ImageFilters::GetVirtualPixelWrap(int row, int col, int rows, int cols, const double* const data) {
+
+		if (row >= 0 && row < rows - 1 && col >= 0 && col < cols - 1)
+			return data[row * cols + col];
+
+		return data[((rows + row) % rows)*cols + (cols + col) % cols];
+	}
+
+	inline Gradient ImageFilters::GetVirtualPixelGradient(int row, int col, int rows, int cols, const Gradient* const data, int interpolateType) {
+
+		if (interpolateType == kInterpolateZero) {
+			return GetVirtualPixelGradientZero(row, col, rows, cols, data);
+		}
+		else if (interpolateType == kInterpolateBorder) {
+			return GetVirtualPixelGradientBorder(row, col, rows, cols, data);
+		}
+		else if (interpolateType == kInterpolateReflection) {
+			return GetVirtualPixelGradientReflection(row, col, rows, cols, data);
+		}
+		else if (interpolateType == kInterpolateWrap) {
+			return GetVirtualPixelGradientWrap(row, col, rows, cols, data);
+		}
+		else {
+			throw new std::invalid_argument("Unexpected partDerivativeType value");
+		}
+	}
+
+	inline Gradient ImageFilters::GetVirtualPixelGradientZero(int row, int col, int rows, int cols, const Gradient* const data) {
+
+		if (row >= 0 && row < rows - 1 && col >= 0 && col < cols - 1)
+			return data[row * cols + col];
+
+		return { 0, 0 };
+	}
+
+	inline Gradient ImageFilters::GetVirtualPixelGradientBorder(int row, int col, int rows, int cols, const Gradient* const data) {
+
+		if (row >= 0 && row < rows - 1 && col >= 0 && col < cols - 1)
+			return data[row * cols + col];
+
+		return data[std::min(rows - 1, std::max(row, 0)) *cols + std::min(cols - 1, std::max(col, 0))];
+	}
+
+	inline Gradient ImageFilters::GetVirtualPixelGradientReflection(int row, int col, int rows, int cols, const Gradient* const data) {
+
+		if (row >= 0 && row < rows - 1 && col >= 0 && col < cols - 1)
+			return data[row * cols + col];
+
+		int trow = row;
+		int tcol = col;
+
+		if (trow < 0)
+			trow = 0 - row;
+		else if (trow >= rows)
+			trow = rows - 1 - trow % (rows - 1);
+
+		if (tcol < 0)
+			tcol = 0 - col;
+		else if (tcol >= cols)
+			tcol = cols - 1 - tcol % (cols - 1);
+
+		return data[trow * cols + tcol];
+	}
+
+	inline Gradient ImageFilters::GetVirtualPixelGradientWrap(int row, int col, int rows, int cols, const Gradient* const data) {
 
 		if (row >= 0 && row < rows - 1 && col >= 0 && col < cols - 1)
 			return data[row * cols + col];

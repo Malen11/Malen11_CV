@@ -8,10 +8,13 @@
 #include "ComputerVision.hpp"
 #include "ImageFilters.hpp"
 #include "ImageDetectors.hpp"
+#include "ImageDescriptors.hpp"
 
 using namespace std;
 using namespace cv;
 using namespace CV_labs;
+
+double testAlpha = 0;
 
 /** function StartCapture */
 VideoCapture StartCapture() {
@@ -114,20 +117,20 @@ cv::Mat MatPlotPoints(Image& img, vector<CV_labs::Point> points, int color = 0) 
 	return colored;
 }
 
-//cv::Mat MatPlotLines(Image& img, vector<PairDot> lines, int color = 0) {
-//
-//	cv::Mat temp = img.GetMat();
-//	cv::Mat colored;
-//	cv::cvtColor(temp, colored, cv::COLOR_GRAY2BGR);
-//	RNG rng(12345);
-//	
-//	for (vector<PairDot>::iterator it = lines.begin(); it != lines.end(); it++) {
-//		Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
-//		line(colored, Point((*it).point0.x, (*it).point0.y), Point((*it).point1.x, (*it).point1.y), color, 2);
-//	}
-//
-//	return colored;
-//}
+cv::Mat MatPlotLines(Image& img, vector<CV_labs::Line> lines, int color = 0) {
+
+	cv::Mat temp = img.GetMat();
+	cv::Mat colored;
+	cv::cvtColor(temp, colored, cv::COLOR_GRAY2BGR);
+	RNG rng(12345);
+	
+	for (vector<CV_labs::Line>::iterator it = lines.begin(); it != lines.end(); it++) {
+		Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+		line(colored, cv::Point((*it).pointA.x, (*it).pointA.y), cv::Point((*it).pointB.x, (*it).pointB.y), color, 2);
+	}
+
+	return colored;
+}
 
 void lab1() {
 
@@ -241,6 +244,120 @@ void lab3() {
 	vector<CV_labs::Point> pointsANMS2 = ImageDetectors::Harris(test2, 5, 5, 0.03, 40);
 	imshow("Harris Points rotate (ANMS)", MatPlotPoints(test2, pointsANMS2));
 }
+
+void lab4() {
+
+	//lab 4
+
+	Mat mat1 = LoadImage();
+	Image base1(mat1);
+	base1.NormalizeImage();
+	imshow("Base image 1", base1.GetMat());
+
+	Image test1 = ImageFilters::ApplyFilter(base1, ImageFilters::GenerateGaussSeparableCore(1.5), ImageFilters::kInterpolateReflection);
+	imshow("Base image 1 gauss", test1.GetMat());
+
+	Mat mat2 = LoadImage();
+	Image base2(mat2);
+	base2.NormalizeImage();
+	imshow("Base image 2", base2.GetMat());
+
+	Image test2 = ImageFilters::ApplyFilter(base2, ImageFilters::GenerateGaussSeparableCore(1.5), ImageFilters::kInterpolateReflection);
+	imshow("Base image 2 gauss", test2.GetMat());
+
+	vector<CV_labs::Point> pointsANMS1 = ImageDetectors::Harris(test1, 5, 5, 0.03, 40);
+	imshow("Harris Points image 1 (ANMS)", MatPlotPoints(test1, pointsANMS1));
+
+	vector<CV_labs::Point> pointsANMS2 = ImageDetectors::Harris(test2, 5, 5, 0.03, 40);
+	imshow("Harris Points image 2 (ANMS)", MatPlotPoints(test2, pointsANMS2));
+
+	vector<CV_labs::Descriptor> descriptors1 = ImageDescriptorMethods::CreateDescriptors(test1, pointsANMS1, 16, 4, 16, ImageDescriptorMethods::kDescriptorTypeSquare, ImageDescriptorMethods::kDescriptorNormalization2Times);
+	vector<CV_labs::Descriptor> descriptors2 = ImageDescriptorMethods::CreateDescriptors(test2, pointsANMS2, 16, 4, 16, ImageDescriptorMethods::kDescriptorTypeSquare, ImageDescriptorMethods::kDescriptorNormalization2Times);
+
+	vector<CV_labs::Line> matchedDesc = ImageDescriptorMethods::DescriptorsMatching(descriptors1, descriptors2, ImageDescriptorMethods::kDescriptorsComparisonEuclid, ImageDescriptorMethods::kDescriptorsMatchingMutal);
+	Image emptyImg(test1.GetColsNumber() + test2.GetColsNumber(), test1.GetRowsNumber() + test2.GetRowsNumber(), (uchar)0);
+	emptyImg.InsertImage(test1, 0, 0); 
+	emptyImg.InsertImage(test2, test1.GetColsNumber(), test1.GetRowsNumber());
+	vector<CV_labs::Line> lines(matchedDesc.size());
+
+	CV_labs::Line line;
+
+	for (int i = 0; i < matchedDesc.size(); i++) {
+		line.pointA = matchedDesc[i].pointA;
+
+		line.pointB.x = matchedDesc[i].pointB.x + test1.GetColsNumber();
+		line.pointB.y = matchedDesc[i].pointB.y + test1.GetRowsNumber();
+		lines.push_back(line);
+	}
+
+	Mat colored = MatPlotLines(emptyImg, lines);
+	
+	double k = 1;
+	resize(colored, colored, Size(k * test1.GetColsNumber(), k * test1.GetRowsNumber()));
+	imshow("matched image", colored);
+}
+
+void lab5() {
+
+	Mat mat1 = LoadImage();
+	Image base1(mat1);
+	base1.NormalizeImage();
+	imshow("Base image 1", base1.GetMat());
+
+	Image test1 = ImageFilters::ApplyFilter(base1, ImageFilters::GenerateGaussSeparableCore(1.6), ImageFilters::kInterpolateReflection);
+	imshow("Base image 1 gauss", test1.GetMat());
+
+	double angle;
+	cout << "Enter angle: ";
+	cin >> angle;
+
+	int points;
+	cout << "Enter points num: ";
+	cin >> points;
+
+	Image base2 = base1.GetRotatedImage(ImageFilters::PI() * angle / 180.0);
+	base2.NormalizeImage();
+	imshow("Base image 2", base2.GetMat());
+
+	Image test2 = ImageFilters::ApplyFilter(base2, ImageFilters::GenerateGaussSeparableCore(1.6), ImageFilters::kInterpolateReflection);
+	imshow("Base image 2 gauss", test2.GetMat());
+
+	vector<CV_labs::Point> pointsANMS1 = ImageDetectors::Harris(test1, 5, 5, 0.03, points);
+	imshow("Harris Points image 1 (ANMS)", MatPlotPoints(test1, pointsANMS1));
+
+	vector<CV_labs::Point> pointsANMS2 = ImageDetectors::Harris(test2, 5, 5, 0.03, points);
+	imshow("Harris Points image 2 (ANMS)", MatPlotPoints(test2, pointsANMS2));
+
+	//testAlpha = 0;
+	vector<CV_labs::Descriptor> descriptors1 = ImageDescriptorMethods::CreateDescriptors(test1, pointsANMS1, 16, 4, 8, ImageDescriptorMethods::kDescriptorTypeSquare, ImageDescriptorMethods::kDescriptorNormalization2Times);
+	cout << "\n";
+	//testAlpha = ImageFilters::PI() * angle / 180.0;
+	vector<CV_labs::Descriptor> descriptors2 = ImageDescriptorMethods::CreateDescriptors(test2, pointsANMS2, 16, 4, 8, ImageDescriptorMethods::kDescriptorTypeSquare, ImageDescriptorMethods::kDescriptorNormalization2Times);
+	cout << "\n";
+	vector<CV_labs::Line> matchedDesc = ImageDescriptorMethods::DescriptorsMatching(descriptors1, descriptors2, ImageDescriptorMethods::kDescriptorsComparisonEuclid, ImageDescriptorMethods::kDescriptorsMatchingMutal);
+	Image emptyImg(test1.GetColsNumber() + test2.GetColsNumber(), test1.GetRowsNumber() + test2.GetRowsNumber(), (uchar)0);
+	emptyImg.InsertImage(test1, 0, 0);
+	emptyImg.InsertImage(test2, test1.GetColsNumber(), test1.GetRowsNumber());
+	vector<CV_labs::Line> lines(matchedDesc.size());
+
+	CV_labs::Line line;
+
+	for (int i = 0; i < matchedDesc.size(); i++) {
+		line.pointA = matchedDesc[i].pointA;
+
+		line.pointB.x = matchedDesc[i].pointB.x + test1.GetColsNumber();
+		line.pointB.y = matchedDesc[i].pointB.y + test1.GetRowsNumber();
+		lines.push_back(line);
+	}
+
+	Mat colored = MatPlotLines(emptyImg, lines);
+
+	double k = 1;
+	resize(colored, colored, Size(k * test1.GetColsNumber(), k * test1.GetRowsNumber()));
+	imshow("matched image", colored);
+}
+
+
 //C:\Users\alist\Desktop\cv\Bikesgray.jpg
 //C:\Users\alist\Desktop\cv\obj.jpg
 //C:\Users\alist\Desktop\cv\star.jpg
@@ -253,7 +370,7 @@ void lab3() {
 //C:\Users\alist\Desktop\cv\Valve_original_(1).PNG
 int main() {
 
-	lab3();
+	lab5();
 
 	//Mat mat1 = LoadImage();
 	//Image test1(mat1);
@@ -268,46 +385,6 @@ int main() {
 	//Image test2, test3, test4, test5;
 
 
-	//lab 4-5
-
-	
-	//test.RotateImage(-ComputerVision::PI()/4);
-	//imshow("rotate!", test.GetMat());
-
-
-	//test3 =  test;//ComputerVision::GaussDefault(test, 1.2, ComputerVision::kInterpolateReflection);//
-	//vector<Dot> pointsANMS = ComputerVision::Harris(test3, 4, 12, 0.03, 50);
-	//imshow("Harris Points (ANMS)", MatPlotPoints(test3, pointsANMS));
-
-	//vector<Descriptor> descriptors = ComputerVision::CreateDescriptors(test3, pointsANMS, 16, 16, 2, 2, 8,ComputerVision::kDescriptorSimple, ComputerVision::kDescriptorNormalization2Times);
-
-	//test4 =  test1;//ComputerVision::GaussDefault(test1, 1.2, ComputerVision::kInterpolateReflection);//
-	//vector<Dot> pointsANMS1 = ComputerVision::Harris(test4, 4, 4, 0.03, 50);
-	//imshow("Harris Points 1 (ANMS)", MatPlotPoints(test4, pointsANMS1));
-
-	//vector<Descriptor> descriptors1 = ComputerVision::CreateDescriptors(test4, pointsANMS1, 16, 16, 2, 2, 8, ComputerVision::kDescriptorSimple, ComputerVision::kDescriptorNormalization2Times);
-	//emptyImg=emptyImg.InsertImage(test, 0, 0).InsertImage(test1, test.GetColsNumber(), test.GetRowsNumber());
-	//
-	////vector<PairDot> matchedDesc = ComputerVision::DescriptorsMatching(descriptors, descriptors1);
-	////vector<PairDot> matchedDesc = ComputerVision::DescriptorsMatching(descriptors, descriptors1, ComputerVision::kDescriptorsComparisonEuclid, ComputerVision::kDescriptorsMatchingNNDR,0.8);
-	//vector<PairDot> matchedDesc = ComputerVision::DescriptorsMatching(descriptors, descriptors1, ComputerVision::kDescriptorsComparisonEuclid, ComputerVision::kDescriptorsMatchingMutal); 
-	//vector<PairDot> lines(matchedDesc.size());
-
-	//PairDot line;
-	//for (int i = 0; i < matchedDesc.size(); i++) {
-	//	line.point0 = matchedDesc[i].point0;
-
-	//	line.point1.x = matchedDesc[i].point1.x + test.GetColsNumber();
-	//	line.point1.y = matchedDesc[i].point1.y + test.GetRowsNumber();
-	//	lines.push_back(line);
-	//}
-
-	//Mat colored = MatPlotLines(emptyImg, lines);
-	//
-	//double k = 1.2;
-	//resize(colored, colored, Size(k*test.GetColsNumber(), k*test.GetRowsNumber()));
-	//imshow("inserted image", colored);
-	
 
 	//lab6 
 

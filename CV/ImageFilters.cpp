@@ -101,7 +101,7 @@ Image CV_labs::ImageFilters::CalculateGradientValue(const Image& image, int part
 	return result;
 }
 
-double * CV_labs::ImageFilters::CalculateGradientValueRaw(int rows, int cols, double * data, int partDerivativeType, int interpolateType) {
+double * ImageFilters::CalculateGradientValueRaw(int rows, int cols, double * data, int partDerivativeType, int interpolateType) {
 
 	SeparableCore coreX, coreY;
 
@@ -141,6 +141,54 @@ double * CV_labs::ImageFilters::CalculateGradientValueRaw(int rows, int cols, do
 
 	return result;
 }
+
+Gradient* ImageFilters::CalculateGradientRaw(int rows, int cols, double* data, int partDerivativeType, int interpolateType) {
+
+	SeparableCore coreX, coreY;
+
+	switch (partDerivativeType) {
+	case kPartDerivativeTypeSobelCore:
+		coreX = GenerateSobelSeparableCore(kPartDerivativeDirectionX);
+		coreY = GenerateSobelSeparableCore(kPartDerivativeDirectionY);
+		break;
+
+	case kPartDerivativeTypeScharrCore:
+		coreX = GenerateScharrSeparableCore(kPartDerivativeDirectionX);
+		coreY = GenerateScharrSeparableCore(kPartDerivativeDirectionY);
+		break;
+
+	case kPartDerivativeTypePrewittCore:
+		coreX = GeneratePrewittSeparableCore(kPartDerivativeDirectionX);
+		coreY = GeneratePrewittSeparableCore(kPartDerivativeDirectionY);
+		break;
+
+	default:
+		throw std::invalid_argument("Unexpected partDerivativeType value");
+		break;
+	}
+
+	double* partDerX = ApplyFilterRaw(rows, cols, data, coreX, interpolateType);
+	double* partDerY = ApplyFilterRaw(rows, cols, data, coreY, interpolateType);
+
+	int size = rows * cols;
+	Gradient* result = new Gradient[size];
+
+	double twoPi = 2 * PI();
+	double angle = 0;
+
+	for (int i = 0; i < size; i++) {
+
+		result[i].value = std::sqrt(partDerX[i] * partDerX[i] + partDerY[i] * partDerY[i]);
+		
+		angle = std::atan2(partDerX[i], partDerY[i]);
+		result[i].phi = angle > 0 ? angle : twoPi + angle;
+	}
+
+	delete[] partDerX, partDerY;
+
+	return result;
+}
+
 
 double * CV_labs::ImageFilters::NormalizeData(int size, double * data) {
 

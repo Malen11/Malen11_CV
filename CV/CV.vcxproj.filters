@@ -36,6 +36,9 @@
     <ClInclude Include="ImageDetectors.hpp">
       <Filter>Файлы заголовков</Filter>
     </ClInclude>
+    <ClInclude Include="ImageDescriptors.hpp">
+      <Filter>Файлы заголовков</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
@@ -57,6 +60,9 @@
       <Filter>Исходные файлы</Filter>
     </ClCompile>
     <ClCompile Include="ImageDetectors.cpp">
+      <Filter>Исходные файлы</Filter>
+    </ClCompile>
+    <ClCompile Include="ImageDescriptors.cpp">
       <Filter>Исходные файлы</Filter>
     </ClCompile>
   </ItemGroup>

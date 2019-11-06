@@ -23,7 +23,7 @@ namespace CV_labs {
 		//apply Harris to Image
 		static std::vector<Point> Harris(Image& image, int wk, int localMinK, double Threshold, int pointsNeeded = -1, int PartDerivativeType = ImageFilters::kPartDerivativeTypeSobelCore);
 
-		//apply Harris to Image data (or array) 
+		//apply Harris to Image data
 		static std::vector<Point> HarrisRaw(int rows, int cols, double * data, int wk, int localMinK, double Threshold, int pointsNeeded = -1, int PartDerivativeType = ImageFilters::kPartDerivativeTypeSobelCore);
 
 		//calculate response for Harris
