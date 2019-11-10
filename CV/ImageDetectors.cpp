@@ -226,10 +226,10 @@ std::vector<Point> ImageDetectors::HarrisRaw(int rows, int cols, double * data, 
 	std::vector<Point> result;
 	Point point;
 	bool isPoint;
-	int r;
+	//int r;
 
 	//check is some point greater then threshold AND local max
-	double localValue;
+	//double localValue;
 
 	for (int i = 0; i < rows; i++) {
 		for (int j = 0; j < cols; j++) {
@@ -388,4 +388,228 @@ std::vector<Point> ImageDetectors::ANMS(std::vector<Point> points, int rows, int
 	delete[] radius;
 
 	return result;
+}
+
+vector<BlobPoint> ImageDetectors::DifferenceOfGaussians(const Image & image) {
+
+	ImagePyramid imagePyramid(image, 0.5, 1.6, 5, 5, 3);
+
+	vector<BlobPoint> pointsOfInterest = ImageDetectors::DifferenceOfGaussiansRaw(imagePyramid);
+
+	return pointsOfInterest;
+}
+
+vector<BlobPoint> ImageDetectors::DifferenceOfGaussiansRaw(const CV_labs::ImagePyramid & gaussians) {
+	
+	vector<BlobPoint> pointsOfInterest;
+
+	if (gaussians.GetLayersNum() + gaussians.GetCrossLayersNum() < 4) {
+		throw new std::invalid_argument("Gaussians must have at least 4 layers and cross layers");
+	}
+
+	double* dataScale0 = nullptr;
+	double* dataScale1 = nullptr;
+
+	double* dogPrevious = nullptr;
+	double* dogTarget = nullptr;
+	double* dogNext = nullptr;
+
+	vector<CV_labs::Point> extremums;
+
+	int rowsNum, colsNum, size;
+	double sigma;
+
+	for (int octave = 0; octave < gaussians.GetOctavesNum(); octave++) {
+
+		rowsNum = gaussians.GetImage(octave, 0).GetRowsNumber();
+		colsNum = gaussians.GetImage(octave, 0).GetColsNumber();
+		size = rowsNum * colsNum;
+
+		//dataScale0 = gaussians.GetImage(octave, 0).GetDataD();
+		//
+		//dataScale1 = gaussians.GetImage(octave, 1).GetDataD();
+		//dogPrevious = arrayDifference(size, dataScale1, dataScale0);
+		///////////////////////////////
+		////if (octave != 0) {
+		////	Image tempImage0(rowsNum, colsNum, dataScale0);
+		////	imshow("dataScale0", tempImage0.GetUpsampledImage(std::pow(2, octave)).GetNormalizedImage().GetMat());
+		////	Image tempImage1(rowsNum, colsNum, dataScale1);
+		////	imshow("dataScale1", tempImage1.GetUpsampledImage(std::pow(2, octave)).GetNormalizedImage().GetMat());
+		////	/*
+		////	double max = dogPrevious[0], min = dogPrevious[0];
+		////	for (int i = 0; i < size; i++) {
+		////		if (max < dogPrevious[i])
+		////			max = dogPrevious[i];
+		////		if (min > dogPrevious[i])
+		////			min = dogPrevious[i];
+		////	}*/
+		////
+		////	Image tempImageP(rowsNum, colsNum, ImageFilters::NormalizeData(size, dogPrevious));
+		////	imshow("dogPrevious", tempImageP.GetUpsampledImage(std::pow(2, octave)).GetMat());
+		////	cvWaitKey();
+		////}
+		////////////////////////////////
+		//delete[] dataScale0;
+		//dataScale0 = dataScale1;
+		//
+		//dataScale1 = gaussians.GetImage(octave, 2).GetDataD();
+		//dogTarget = arrayDifference(size, dataScale0, dataScale1);
+		//delete[] dataScale0;
+		//dataScale0 = dataScale1;
+		//
+		//dataScale1 = gaussians.GetImage(octave, 3).GetDataD();
+		//dogNext = arrayDifference(size, dataScale0, dataScale1);
+		//delete[] dataScale0;
+		//dataScale0 = dataScale1;
+		//
+		//extremums = findExtremumIn3D(rowsNum, colsNum, dogTarget, dogPrevious, dogNext);
+		//
+		//for (int pos = 0; pos < extremums.size(); pos++) {
+		//
+		//	pointsOfInterest.push_back({ gaussians.RestoreCoordinate(extremums[pos], gaussians.GetImageSigma(octave, 1)), gaussians.GetImageSigma(octave, 1) });
+		//}
+		//
+		//extremums.clear();
+		//
+		//delete[] dogPrevious;
+		//dogPrevious = dogTarget;
+		//dogTarget = dogNext;
+		//dogNext = nullptr;
+
+		for (int layer = 1; layer < gaussians.GetLayersNum() + gaussians.GetCrossLayersNum() - 2; layer++) {
+
+			if (layer == 1) {
+
+				dataScale0 = gaussians.GetImage(octave, layer - 1).GetDataD();
+
+				dataScale1 = gaussians.GetImage(octave, layer).GetDataD();
+				dogPrevious = arrayDifference(size, dataScale1, dataScale0);
+				delete[] dataScale0;
+				dataScale0 = dataScale1;
+
+				dataScale1 = gaussians.GetImage(octave, layer + 1).GetDataD();
+				dogTarget = arrayDifference(size, dataScale0, dataScale1);
+				delete[] dataScale0;
+				dataScale0 = dataScale1;
+			}
+
+			dataScale1 = gaussians.GetImage(octave, layer + 2).GetDataD();
+			dogNext = arrayDifference(size, dataScale0, dataScale1);
+			delete[] dataScale0;
+			dataScale0 = dataScale1;
+
+			/////////////////////////////
+			//if (octave != 0) {
+			//	/*Image tempImage0(rowsNum, colsNum, dataScale0);
+			//	imshow("dataScale0", tempImage0.GetUpsampledImage(std::pow(2, octave)).GetNormalizedImage().GetMat());
+			//	Image tempImage1(rowsNum, colsNum, dataScale1);
+			//	imshow("dataScale1", tempImage1.GetUpsampledImage(std::pow(2, octave)).GetNormalizedImage().GetMat());*/
+			//	/*
+			//	double max = dogPrevious[0], min = dogPrevious[0];
+			//	for (int i = 0; i < size; i++) {
+			//		if (max < dogPrevious[i])
+			//			max = dogPrevious[i];
+			//		if (min > dogPrevious[i])
+			//			min = dogPrevious[i];
+			//	}*/
+			//	
+			//	/*Image tempImageP(rowsNum, colsNum, ImageFilters::NormalizeData(size, dogPrevious));
+			//	imshow("dogPrevious", tempImageP.GetMat());
+			//	Image tempImageT(rowsNum, colsNum, ImageFilters::NormalizeData(size, dogTarget));
+			//	imshow("dogTarget", tempImageT.GetMat());
+			//	Image tempImageN(rowsNum, colsNum, ImageFilters::NormalizeData(size, dogNext));
+			//	imshow("dogNext", tempImageN.GetMat());
+			//	cvWaitKey();*/
+			//}
+			//////////////////////////////
+			extremums = findExtremumIn3D(rowsNum, colsNum, dogTarget, dogPrevious, dogNext);
+			sigma = gaussians.GetImageSigma(octave, layer);
+
+			for (int pos = 0; pos < extremums.size(); pos++) {
+				pointsOfInterest.push_back({ gaussians.RestoreCoordinate(extremums[pos], octave, layer), sigma });
+			}
+
+			extremums.clear();
+			
+			delete[] dogPrevious;
+			dogPrevious = dogTarget;
+			dogTarget = dogNext;
+			dogNext = nullptr;
+		}
+
+		delete[] dogTarget, dogNext, dataScale0, dataScale1;
+
+		////////
+		//break;
+		///////
+	}
+
+	return pointsOfInterest;
+}
+
+//calculate difference of arrays
+double * ImageDetectors::arrayDifference(int size, const double * const data0, const double * const data1) {
+
+	double* arrDif = new double[size];
+
+	for (int i = 0; i < size; i++) {
+
+		arrDif[i] = data0[i] - data1[i];
+	}
+
+	return arrDif;
+}
+
+//find extremum in 3d (for DoG)
+vector<Point> ImageDetectors::findExtremumIn3D(int rows, int cols, const double * const dataTarget, const double * const dataPrevious, const double * const dataNext) {
+	
+	vector<Point> extremums;
+	double val;
+	bool maxFlag;
+	bool minFlag;
+	int pos;
+	const double** data = new const double *[3];
+	data[0] = dataPrevious;
+	data[1] = dataTarget;
+	data[2] = dataNext;
+
+	double eps = 0.0000001;
+
+	for (int row = 1; row < rows - 1; row++) {
+		for (int col = 1; col < cols - 1; col++) {
+
+			if (row == 158 && col == 320)
+				int sotp = 1;
+			val = dataTarget[row * cols + col];
+			maxFlag = true;
+			minFlag = true;
+
+			for (int index = 0; (index < 3) && (maxFlag || minFlag); index++) {
+				for (int rowOff = row - 1; (rowOff <= row + 1) && (maxFlag || minFlag); rowOff++) {
+					for (int colOff = col - 1; (colOff <= col + 1) && (maxFlag || minFlag); colOff++) {
+
+						if (index == 1 && rowOff == row && colOff == col) {
+							continue;
+						}
+
+						if (maxFlag && ImageFilters::GetVirtualPixelZero(rowOff, colOff, rows, cols, data[index]) > val - eps) {
+							maxFlag = false;
+						}
+
+						if (minFlag && ImageFilters::GetVirtualPixelZero(rowOff, colOff, rows, cols, data[index]) < val + eps) {
+							minFlag = false;
+						}
+					}
+				}
+			}
+
+			if (maxFlag || minFlag) {
+				extremums.push_back({ col, row });
+			}
+		}
+	}
+
+	delete[] data;
+
+	return extremums;
 }

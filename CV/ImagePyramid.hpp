@@ -5,13 +5,18 @@
 
 namespace CV_labs {
 	
+	struct BlobPoint {
+
+		Point point;
+		double scale;
+	};
 	//Class for storing collection of images in images pyramid's format
 	class ImagePyramid {
 
 	private:
 		int octavesNum;				//Number of octaves
-		int layersNum;				//Number of layers(not count base layer image)
-		//int layersAdditionalNum;	//Number of cross layers (not count in layersNum)
+		int layersNum;				//Number of layers(not count last image, what will be dawnsampled)
+		int crossLayersNum;			//Number of cross layers (not count in layersNum, count last image)
 		double sigmaA;				//Original sigma
 		double sigma0;				//Starter sigma
 		
@@ -27,10 +32,10 @@ namespace CV_labs {
 #pragma region Constructors & Destructor
 
 		//Default constructor.
-		ImagePyramid(const Image &img, double sigmaA, double sigma0, int octavesNum, int layersNum);
+		ImagePyramid(const Image &img, double sigmaA, double sigma0, int octavesNum, int layersNum, int crossLayersNum);
 
 		//Auto-octave constructor.
-		ImagePyramid(const Image &img, double sigmaA, double sigma0, int layersNum);
+		ImagePyramid(const Image &img, double sigmaA, double sigma0, int layersNum, int crossLayersNum);
 
 		//Destructor
 		~ImagePyramid();
@@ -42,6 +47,9 @@ namespace CV_labs {
 
 		//Get number of layers (base image on each level not count)
 		int GetLayersNum() const;
+
+		//Number of cross layers(not count in layersNum, count last image)
+		int GetCrossLayersNum() const;
 
 		//Get number of images
 		int GetImagesNum() const;
@@ -64,14 +72,36 @@ namespace CV_labs {
 		//Get pixel for sigma at row, col
 		uchar L(int row, int col, double sigma) const;
 
-		//Image L(double sigmaArray);
-	protected:
+		//Get pixel for octave and layer at point
+		uchar L(Point point, int octave, int layer) const;
+
+		//Get pixel for octave and layer at row, col
+		uchar L(int row, int col, int octave, int layer) const;
 
 		//Get converted coordinate to specific sigma
 		CV_labs::Point ConvertCoordinate(int row, int col, double sigma) const;
 
 		//Get converted coordinate to specific sigma
 		CV_labs::Point ConvertCoordinate(Point point, double sigma) const;
+
+		//Get converted coordinate to specific octave
+		CV_labs::Point ConvertCoordinate(int row, int col, int octave, int layer) const;
+
+		//Get converted coordinate to specific octave
+		CV_labs::Point ConvertCoordinate(Point point, int octave, int layer) const;
+
+		//Get restored coordinate to specific sigma
+		CV_labs::Point RestoreCoordinate(int row, int col, double sigma) const;
+
+		//Get restored coordinate to specific sigma
+		CV_labs::Point RestoreCoordinate(Point point, double sigma) const;
+
+		//Get restored coordinate to specific octave
+		CV_labs::Point RestoreCoordinate(int row, int col, int octave, int layer) const;
+
+		//Get restored coordinate to specific octave
+		CV_labs::Point RestoreCoordinate(Point point, int octave, int layer) const;
+	protected:
 		
 		//Get nearest image index to specific sigma
 		int getImageIndex(double sigma) const;
@@ -83,10 +113,16 @@ namespace CV_labs {
 		return this->octavesNum;
 	}
 
-	//Get number of layers (base image on each level not count)
+	//Get number of layers (not count last image, what will be dawnsampled)
 	inline int ImagePyramid::GetLayersNum() const {
 
 		return this->layersNum;
+	}
+	
+	//Number of cross layers(not count in layersNum, count last image)
+	inline int ImagePyramid::GetCrossLayersNum() const {
+
+		return this->crossLayersNum;
 	}
 
 	//Get number of images
@@ -107,7 +143,7 @@ namespace CV_labs {
 		if (octave >= octavesNum) {
 			throw new std::invalid_argument("Try to get image at nonexistent octave");
 		}
-		if (layer >= layersNum) {
+		if (layer >= layersNum + crossLayersNum) {
 			throw new std::invalid_argument("Try to get image at nonexistent layer");
 		}
 
@@ -117,16 +153,58 @@ namespace CV_labs {
 	//Get converted coordinate to specific sigma
 	inline CV_labs::Point ImagePyramid::ConvertCoordinate(Point point, double sigma) const {
 
-		//each octave contain layersNum + 1 image, so, if we take pos of image with specific sigma, we can calculate octave
-		int octave = getImageIndex(sigma) / (layersNum + 1);
+		int index = getImageIndex(sigma);
+
+		int octave = index / (layersNum + crossLayersNum);
 		double k = 1 / std::pow(2, octave);
 
 		CV_labs::Point result;
-		point.x = std::round(point.x * k);
-		point.y = std::round(point.y * k);
+		result.x = std::round(point.x * k);
+		result.y = std::round(point.y * k);
 
 		return result;
 	}
+
+	//Get restored coordinate to specific sigma
+	inline CV_labs::Point ImagePyramid::RestoreCoordinate(int row, int col, double sigma) const {
+
+		return RestoreCoordinate({ col, row }, sigma);
+	}
+
+	//Get restored coordinate to specific sigma
+	inline CV_labs::Point ImagePyramid::RestoreCoordinate(Point point, double sigma) const {
+
+		int index = getImageIndex(sigma);
+
+		int octave = index / (layersNum + crossLayersNum);
+		double k = std::pow(2, octave);
+
+		CV_labs::Point result;
+		result.x = std::round(point.x * k);
+		result.y = std::round(point.y * k);
+
+		return result;
+	}
+
+	//Get restored coordinate to specific octave
+	inline CV_labs::Point ImagePyramid::RestoreCoordinate(int row, int col, int octave, int layer) const
+	{
+		return RestoreCoordinate({ col, row }, octave, layer);
+	}
+
+	//Get restored coordinate to specific octave
+	inline CV_labs::Point ImagePyramid::RestoreCoordinate(Point point, int octave, int layer) const {
+		
+		int pyramidOctave = std::max(std::min(octave, octavesNum), 0);
+		double k = std::pow(2, pyramidOctave);
+
+		CV_labs::Point result;
+		result.x = std::round(point.x * k);
+		result.y = std::round(point.y * k);
+
+		return result;
+	}
+
 
 	//Get converted coordinate to specific sigma
 	inline CV_labs::Point ImagePyramid::ConvertCoordinate(int row, int col, double sigma) const {
@@ -164,7 +242,7 @@ namespace CV_labs {
 			layer = 0;
 		}
 
-		return octave * (this->layersNum + 1) + layer;
+		return octave * (layersNum + crossLayersNum) + layer;
 	}
 
 	//Get pixel for sigma at row, col
@@ -176,16 +254,15 @@ namespace CV_labs {
 	//Get pixel for sigma at point
 	inline uchar ImagePyramid::L(Point point, double sigma) const {
 
-		int pos = getImageIndex(sigma);
+		int index = getImageIndex(sigma);
 
-		//each octave contain layersNum + 1 image, so, if we take pos of image with specific sigma, we can calculate octave
-		int octave = pos / (layersNum + 1);
+		int octave = index / (layersNum + crossLayersNum);
 		double k = 1 / std::pow(2, octave);
 
 		CV_labs::Point result;
-		point.x = std::round(point.x * k);
-		point.y = std::round(point.y * k);
+		result.x = std::round(point.x * k);
+		result.y = std::round(point.y * k);
 
-		return images[pos].GetValueAt(point);
+		return images[index].GetValueAt(result);
 	}
 }

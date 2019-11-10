@@ -132,6 +132,24 @@ cv::Mat MatPlotLines(Image& img, vector<CV_labs::Line> lines, int color = 0) {
 	return colored;
 }
 
+cv::Mat MatPlotBlobs(Image& img, vector<CV_labs::BlobPoint> points, int color = 0) {
+
+	cv::Mat temp = img.GetMat();
+	cv::Mat colored;
+	cv::cvtColor(temp, colored, cv::COLOR_GRAY2BGR);
+
+	for (vector<CV_labs::BlobPoint>::iterator it = points.begin(); it != points.end(); it++) {
+
+		//проверка, что все значения допустимы (костыль, потом удалить)
+		img.GetValueAt((*it).point);
+		
+		//if ((*it).point.x > 300 && (*it).point.x < 340 && (*it).point.y > 140 && (*it).point.y < 180)
+		circle(colored, cv::Point((*it).point.x, (*it).point.y), sqrt(2) * (*it).scale, CV_RGB(255, 0, 0), 1);
+	}
+
+	return colored;
+}
+
 void lab1() {
 
 	Mat mat = LoadImage();
@@ -171,7 +189,7 @@ void lab2() {
 	test.NormalizeImage();
 	imshow("Base image", test.GetMat());
 
-	ImagePyramid imagePyramid(test, 0, 1.5, 5);
+	ImagePyramid imagePyramid(test, 0, 1.5, 5, 3);
 
 	for(int i = 0; i < imagePyramid.GetOctavesNum(); i++) {
 		for (int j = 0; j < imagePyramid.GetLayersNum(); j++) {
@@ -182,12 +200,13 @@ void lab2() {
 		}
 	}
 
-	double sigma = 1.5 * 4 * 1.4;
+	int octave = 1;
+	double sigma = 1.5 * std::pow(2, octave) * 1.3;
 	Image test2 = ImageFilters::ApplyFilter(test, ImageFilters::GenerateGaussSeparableCore(sigma), ImageFilters::kInterpolateReflection);
 
 	int cols = test2.GetColsNumber();
 	int rows = test2.GetRowsNumber();
-	uchar* imgFromPyr = new uchar[cols *rows];
+	uchar* imgFromPyr = new uchar[cols * rows];
 
 
 	for (int i = 0; i < rows; i++) {
@@ -196,9 +215,15 @@ void lab2() {
 			imgFromPyr[i * cols + j] = imagePyramid.L(i, j, sigma);
 		}
 	}
+
+	imshow("smothed image downsampled", test2.GetDownsampledImage(std::pow(2, octave)).GetMat());
+	imshow("Image in pyramid", imagePyramid.GetImage(sigma).GetMat());
+	imshow("Difference", imagePyramid.GetImage(sigma).CalcAbsoluteDiff(test2.GetDownsampledImage(std::pow(2, octave))).GetMat());
+	cout << "Max difference: " << imagePyramid.GetImage(sigma).CalcAbsoluteDiff(test2.GetDownsampledImage(std::pow(2, octave))).GetMaxValue() / 256.0;
+
 	Image imgFromPyrRe(rows, cols, imgFromPyr);
 	imshow("smothed image", test2.GetMat());
-	imshow("rebuild image", imgFromPyrRe.GetMat());
+	imshow("rebuild image", imgFromPyrRe.GetNormalizedImage().GetMat());
 }
 
 void lab3() {
@@ -357,6 +382,18 @@ void lab5() {
 	imshow("matched image", colored);
 }
 
+void lab6() {
+
+
+	Mat mat = LoadImage();
+	Image test(mat);
+	test.NormalizeImage();
+	imshow("Base image", test.GetMat());
+
+	vector<BlobPoint> blobs = ImageDetectors::DifferenceOfGaussians(test);
+	imshow("Blobs", MatPlotBlobs(test, blobs));
+}
+
 
 //C:\Users\alist\Desktop\cv\Bikesgray.jpg
 //C:\Users\alist\Desktop\cv\obj.jpg
@@ -368,26 +405,14 @@ void lab5() {
 //C:\Users\alist\Desktop\cv\LenaRotate.jpg
 //C:\Users\alist\Desktop\cv\LenaRotate2.jpg
 //C:\Users\alist\Desktop\cv\Valve_original_(1).PNG
+//C:\Users\alist\Desktop\cv\blobs.jpg
+//C:\Users\alist\Desktop\cv\butterfly.png
+//C:\Users\alist\Desktop\cv\photo.png
+//C:\Users\alist\Desktop\cv\sunflower.jpg
+//C:\Users\alist\Desktop\cv\daises.jfif
 int main() {
 
-	lab5();
-
-	//Mat mat1 = LoadImage();
-	//Image test1(mat1);
-	//imshow("Base image 1", test1.GetMat());
-
-	//Image emptyImg(test.GetRowsNumber() + test1.GetRowsNumber(), test.GetColsNumber() + test1.GetColsNumber(), 0);
-	//
-	////double* ddata = test.GetNormalizeDataF();
-	////Image test1(test.GetRowsNumber(), test.GetColsNumber(), ddata,true);
-	////imshow("Normalize image", test1.GetMat());
-
-	//Image test2, test3, test4, test5;
-
-
-
-	//lab6 
-
+	lab6();
 
 	//video 
 /*	

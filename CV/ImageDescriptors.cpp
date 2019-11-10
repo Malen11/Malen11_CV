@@ -63,8 +63,9 @@ std::vector<Descriptor> ImageDescriptorMethods::CreateDescriptorsRaw(int rows, i
 			descriptorsVector[i].features = temp;
 
 			for (int j = 0; j < descriptorsVector[i].featuresNum; j++) {
-				if (descriptorsVector[i].features[j] < 0.2)
-					descriptorsVector[i].features[j] = 0;
+				//> 0.2 или <0.2?
+				if (descriptorsVector[i].features[j] > 0.2)
+					descriptorsVector[i].features[j] = 0.2;
 			}
 
 			temp = ImageFilters::NormalizeData(descriptorsVector[i].featuresNum, descriptorsVector[i].features);
@@ -422,7 +423,7 @@ std::vector<Line> ImageDescriptorMethods::DescriptorsMatching(std::vector<Descri
 
 	int* desc1PairInDesc2 = DescriptorsMatchingRaw(descs1, descs2, descriptorsComparisionType, descriptorsMatchingType, thresh);
 
-	std::vector<Line> matchedPoints = std::vector<Line>();
+	std::vector<Line> matchedPoints;
 	Line pairPoints;
 
 	for (int i = 0; i < descs1.size(); i++) {
@@ -462,7 +463,7 @@ std::vector<double> ImageDescriptorMethods::CalculateDominatingAngle(Point point
 	double* gaussWeight = ImageFilters::GenerateGaussCore(1.5 * windowSizeD, windowSizeD / 2.0).data;
 
 	//place all pixels, that belong to window into vector
-	vector<Gradient> histogramsGradients = vector<Gradient>();
+	vector<Gradient> histogramsGradients;
 
 	for (int row = y0; row < y1; row++) {
 		for (int col = x0; col < x1; col++) {
