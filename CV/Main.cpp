@@ -4,7 +4,7 @@
 #include "stdafx.h"
 
 #include "Image.hpp"
-#include "ImagePyramid.hpp"
+#include "ScaleSpace.hpp"
 #include "ComputerVision.hpp"
 #include "ImageFilters.hpp"
 #include "ImageDetectors.hpp"
@@ -132,13 +132,13 @@ cv::Mat MatPlotLines(Image& img, vector<CV_labs::Line> lines, int color = 0) {
 	return colored;
 }
 
-cv::Mat MatPlotBlobs(Image& img, vector<CV_labs::BlobPoint> points, int color = 0) {
+cv::Mat MatPlotBlobs(Image& img, vector<CV_labs::ScalePoint> points, int color = 0) {
 
 	cv::Mat temp = img.GetMat();
 	cv::Mat colored;
 	cv::cvtColor(temp, colored, cv::COLOR_GRAY2BGR);
 
-	for (vector<CV_labs::BlobPoint>::iterator it = points.begin(); it != points.end(); it++) {
+	for (vector<CV_labs::ScalePoint>::iterator it = points.begin(); it != points.end(); it++) {
 
 		//проверка, что все значения допустимы (костыль, потом удалить)
 		img.GetValueAt((*it).point);
@@ -189,7 +189,7 @@ void lab2() {
 	test.NormalizeImage();
 	imshow("Base image", test.GetMat());
 
-	ImagePyramid imagePyramid(test, 0, 1.5, 5, 3);
+	ScaleSpace imagePyramid(test, 4, 5, 0.5, 1.5, 0, 1, 2);
 
 	for(int i = 0; i < imagePyramid.GetOctavesNum(); i++) {
 		for (int j = 0; j < imagePyramid.GetLayersNum(); j++) {
@@ -200,7 +200,7 @@ void lab2() {
 		}
 	}
 
-	int octave = 1;
+	int octave = 2;
 	double sigma = 1.5 * std::pow(2, octave) * 1.3;
 	Image test2 = ImageFilters::ApplyFilter(test, ImageFilters::GenerateGaussSeparableCore(sigma), ImageFilters::kInterpolateReflection);
 
@@ -233,10 +233,10 @@ void lab3() {
 	base.NormalizeImage();
 	imshow("Base image", base.GetMat());
 
-	Image test1 = ImageFilters::ApplyFilter(base, ImageFilters::GenerateGaussSeparableCore(1.5), ImageFilters::kInterpolateReflection);
-	imshow("Base image gauss", test1.GetMat());
-	Image test2 = ImageFilters::ApplyFilter(base.GetRotatedImage(-0.2), ImageFilters::GenerateGaussSeparableCore(1.5), ImageFilters::kInterpolateReflection);
-	imshow("Rotate gauss!", test2.GetMat());
+	Image test1 = base; //ImageFilters::ApplyFilter(base, ImageFilters::GenerateGaussSeparableCore(1.5), ImageFilters::kInterpolateReflection);
+	//imshow("Base image gauss", test1.GetMat());
+	Image test2 = base.GetRotatedImage(-0.2);// ImageFilters::ApplyFilter(base.GetRotatedImage(-0.2), ImageFilters::GenerateGaussSeparableCore(1.5), ImageFilters::kInterpolateReflection);
+	imshow("Rotate image!", test2.GetMat());
 
 	/*test2 = ComputerVision::Canny(test, 2, 6, 40, 30);
 	imshow("Canny", test2.GetMat());*/
@@ -256,17 +256,17 @@ void lab3() {
 	Image partDerXImg(test1.GetRowsNumber(), test1.GetColsNumber(), partDerX);
 	imshow("partDerXImg", partDerXImg.GetMat());*/
 
-	vector<CV_labs::Point> pointsThresh1 = ImageDetectors::Harris(test1, 5, 5, 0.03);
+	vector<CV_labs::Point> pointsThresh1 = ImageDetectors::Harris(test1, 2, 2, 0.03);
 	imshow("Harris Points (Thresh)", MatPlotPoints(test1, pointsThresh1));
 
-	vector<CV_labs::Point> pointsANMS1 = ImageDetectors::Harris(test1, 5, 5, 0.03, 40);
+	vector<CV_labs::Point> pointsANMS1 = ImageDetectors::Harris(test1, 2, 2, 0.03, 40);
 	imshow("Harris Points (ANMS)", MatPlotPoints(test1, pointsANMS1));
 
 
-	vector<CV_labs::Point> pointsThresh2 = ImageDetectors::Harris(test2, 5, 5, 0.03);
+	vector<CV_labs::Point> pointsThresh2 = ImageDetectors::Harris(test2, 2, 2, 0.03);
 	imshow("Harris Points rotate (Thresh)", MatPlotPoints(test2, pointsThresh2));
 
-	vector<CV_labs::Point> pointsANMS2 = ImageDetectors::Harris(test2, 5, 5, 0.03, 40);
+	vector<CV_labs::Point> pointsANMS2 = ImageDetectors::Harris(test2, 2, 2, 0.03, 40);
 	imshow("Harris Points rotate (ANMS)", MatPlotPoints(test2, pointsANMS2));
 }
 
@@ -279,16 +279,16 @@ void lab4() {
 	base1.NormalizeImage();
 	imshow("Base image 1", base1.GetMat());
 
-	Image test1 = ImageFilters::ApplyFilter(base1, ImageFilters::GenerateGaussSeparableCore(1.5), ImageFilters::kInterpolateReflection);
-	imshow("Base image 1 gauss", test1.GetMat());
+	Image test1 = base1;// ImageFilters::ApplyFilter(base1, ImageFilters::GenerateGaussSeparableCore(1.5), ImageFilters::kInterpolateReflection);
+	//imshow("Base image 1 gauss", test1.GetMat());
 
 	Mat mat2 = LoadImage();
 	Image base2(mat2);
 	base2.NormalizeImage();
 	imshow("Base image 2", base2.GetMat());
 
-	Image test2 = ImageFilters::ApplyFilter(base2, ImageFilters::GenerateGaussSeparableCore(1.5), ImageFilters::kInterpolateReflection);
-	imshow("Base image 2 gauss", test2.GetMat());
+	Image test2 = base2;// ImageFilters::ApplyFilter(base2, ImageFilters::GenerateGaussSeparableCore(1.5), ImageFilters::kInterpolateReflection);
+	//imshow("Base image 2 gauss", test2.GetMat());
 
 	vector<CV_labs::Point> pointsANMS1 = ImageDetectors::Harris(test1, 5, 5, 0.03, 40);
 	imshow("Harris Points image 1 (ANMS)", MatPlotPoints(test1, pointsANMS1));
@@ -329,28 +329,38 @@ void lab5() {
 	base1.NormalizeImage();
 	imshow("Base image 1", base1.GetMat());
 
-	Image test1 = ImageFilters::ApplyFilter(base1, ImageFilters::GenerateGaussSeparableCore(1.6), ImageFilters::kInterpolateReflection);
-	imshow("Base image 1 gauss", test1.GetMat());
+	Image test1 = base1;// ImageFilters::ApplyFilter(base1, ImageFilters::GenerateGaussSeparableCore(1.6), ImageFilters::kInterpolateReflection);
+	//imshow("Base image 1 gauss", test1.GetMat());
+	
+	Mat mat2 = LoadImage();
+	Image base2(mat2);
+	base2.NormalizeImage();
+	imshow("Base image 2", base2.GetMat());
+	Image test2 = base2;
 
+	/*
 	double angle;
 	cout << "Enter angle: ";
 	cin >> angle;
 
+	Image base2 = base1.GetRotatedImage(ImageFilters::PI() * angle / 180.0);
+	//base2.NormalizeImage();
+	//imshow("Base image 2", base2.GetMat());
+
+	Image test2 = base2;// ImageFilters::ApplyFilter(base2, ImageFilters::GenerateGaussSeparableCore(1.6), ImageFilters::kInterpolateReflection);
+	//imshow("Base image 2 gauss", test2.GetMat());
+	*/
+	
 	int points;
+
 	cout << "Enter points num: ";
 	cin >> points;
 
-	Image base2 = base1.GetRotatedImage(ImageFilters::PI() * angle / 180.0);
-	base2.NormalizeImage();
-	imshow("Base image 2", base2.GetMat());
 
-	Image test2 = ImageFilters::ApplyFilter(base2, ImageFilters::GenerateGaussSeparableCore(1.6), ImageFilters::kInterpolateReflection);
-	imshow("Base image 2 gauss", test2.GetMat());
-
-	vector<CV_labs::Point> pointsANMS1 = ImageDetectors::Harris(test1, 5, 5, 0.03, points);
+	vector<CV_labs::Point> pointsANMS1 = ImageDetectors::Harris(test1, 2, 2, 0.03, points);
 	imshow("Harris Points image 1 (ANMS)", MatPlotPoints(test1, pointsANMS1));
 
-	vector<CV_labs::Point> pointsANMS2 = ImageDetectors::Harris(test2, 5, 5, 0.03, points);
+	vector<CV_labs::Point> pointsANMS2 = ImageDetectors::Harris(test2, 2, 2, 0.03, points);
 	imshow("Harris Points image 2 (ANMS)", MatPlotPoints(test2, pointsANMS2));
 
 	//testAlpha = 0;
@@ -360,7 +370,7 @@ void lab5() {
 	vector<CV_labs::Descriptor> descriptors2 = ImageDescriptorMethods::CreateDescriptors(test2, pointsANMS2, 16, 4, 8, ImageDescriptorMethods::kDescriptorTypeSquare, ImageDescriptorMethods::kDescriptorNormalization2Times);
 	cout << "\n";
 	vector<CV_labs::Line> matchedDesc = ImageDescriptorMethods::DescriptorsMatching(descriptors1, descriptors2, ImageDescriptorMethods::kDescriptorsComparisonEuclid, ImageDescriptorMethods::kDescriptorsMatchingMutal);
-	Image emptyImg(test1.GetColsNumber() + test2.GetColsNumber(), test1.GetRowsNumber() + test2.GetRowsNumber(), (uchar)0);
+	Image emptyImg(test1.GetRowsNumber() + test2.GetRowsNumber(), test1.GetColsNumber() + test2.GetColsNumber(), (uchar)0);
 	emptyImg.InsertImage(test1, 0, 0);
 	emptyImg.InsertImage(test2, test1.GetColsNumber(), test1.GetRowsNumber());
 	vector<CV_labs::Line> lines(matchedDesc.size());
@@ -384,21 +394,86 @@ void lab5() {
 
 void lab6() {
 
+	Mat mat1 = LoadImage();
+	Image base1(mat1);
+	base1.NormalizeImage();
+	imshow("Base image 1", base1.GetMat());
 
-	Mat mat = LoadImage();
-	Image test(mat);
-	test.NormalizeImage();
-	imshow("Base image", test.GetMat());
+	Image test1 = base1;// ImageFilters::ApplyFilter(base1, ImageFilters::GenerateGaussSeparableCore(1.6), ImageFilters::kInterpolateReflection);
+						//imshow("Base image 1 gauss", test1.GetMat());
 
-	vector<BlobPoint> blobs = ImageDetectors::DifferenceOfGaussians(test);
-	imshow("Blobs", MatPlotBlobs(test, blobs));
+	Mat mat2 = LoadImage();
+	Image base2(mat2);
+	base2.NormalizeImage();
+	imshow("Base image 2", base2.GetMat());
+
+	Image test2 = base2;// ImageFilters::ApplyFilter(base2, ImageFilters::GenerateGaussSeparableCore(1.6), ImageFilters::kInterpolateReflection);
+						//imshow("Base image 2 gauss", test2.GetMat());
+	/*double angle;
+	cout << "Enter angle: ";
+	cin >> angle;*/
+
+	int wk;
+	cout << "Enter wk: ";
+	cin >> wk;
+	int localMinK;
+	cout << "Enter localMinK: ";
+	cin >> localMinK;
+	double harrisThreshold;
+	cout << "Enter harris threshold: ";
+	cin >> harrisThreshold;
+	double dogThreshold;
+	cout << "Enter dog threshold: ";
+	cin >> dogThreshold;
+
+	double sigmaA = 0.5, sigma0 = 1.6;
+	ScaleSpace imagePyramid1(test1, 4, 5, sigmaA, sigma0, 0, 1, 2);
+	ScaleSpace imagePyramid2(test2, 4, 5, sigmaA, sigma0, 0, 1, 2);
+
+	vector<CV_labs::ScalePoint> blobs1 = ImageDetectors::HarrisLaplass(imagePyramid1, wk, localMinK, harrisThreshold, dogThreshold);
+	imshow("Blobs 1", MatPlotBlobs(test1, blobs1));
+
+	vector<CV_labs::ScalePoint> blobs2 = ImageDetectors::HarrisLaplass(imagePyramid2, wk, localMinK, harrisThreshold, dogThreshold);
+	imshow("Blobs 2", MatPlotBlobs(test2, blobs2));
+
+	cv::waitKey();
+
+	//testAlpha = 0;
+	vector<CV_labs::Descriptor> descriptors1 = ImageDescriptorMethods::CreateDescriptors(imagePyramid1, blobs1, 16, 4, 8, ImageDescriptorMethods::kDescriptorTypeSquare, ImageDescriptorMethods::kDescriptorNormalization2Times);
+	cout << "\n";
+	//testAlpha = ImageFilters::PI() * angle / 180.0;
+	vector<CV_labs::Descriptor> descriptors2 = ImageDescriptorMethods::CreateDescriptors(imagePyramid2, blobs2, 16, 4, 8, ImageDescriptorMethods::kDescriptorTypeSquare, ImageDescriptorMethods::kDescriptorNormalization2Times);
+	cout << "\n";
+	vector<CV_labs::Line> matchedDesc = ImageDescriptorMethods::DescriptorsMatching(descriptors1, descriptors2, ImageDescriptorMethods::kDescriptorsComparisonEuclid, ImageDescriptorMethods::kDescriptorsMatchingMutal);
+	Image emptyImg(test1.GetRowsNumber() + test2.GetRowsNumber(), test1.GetColsNumber() + test2.GetColsNumber(), (uchar)0);
+	emptyImg.InsertImage(test1, 0, 0);
+	emptyImg.InsertImage(test2, test1.GetColsNumber(), test1.GetRowsNumber());
+	vector<CV_labs::Line> lines(matchedDesc.size());
+
+	CV_labs::Line line;
+
+	for (int i = 0; i < matchedDesc.size(); i++) {
+		line.pointA = matchedDesc[i].pointA;
+
+		line.pointB.x = matchedDesc[i].pointB.x + test1.GetColsNumber();
+		line.pointB.y = matchedDesc[i].pointB.y + test1.GetRowsNumber();
+		lines.push_back(line);
+	}
+
+	Mat colored = MatPlotLines(emptyImg, lines);
+
+	double k = 1;
+	resize(colored, colored, Size(k * test1.GetColsNumber(), k * test1.GetRowsNumber()));
+	imshow("matched image", colored);
 }
 
 
 //C:\Users\alist\Desktop\cv\Bikesgray.jpg
 //C:\Users\alist\Desktop\cv\obj.jpg
+//C:\Users\alist\Desktop\cv\obj2.jpg
 //C:\Users\alist\Desktop\cv\star.jpg
 //C:\Users\alist\Desktop\cv\Lena2.jpg
+//C:\Users\alist\Desktop\cv\Lena3.jpg
 //C:\Users\alist\Desktop\cv\Lena2lheight.jpg
 //C:\Users\alist\Desktop\cv\Lena2contrast.jpg
 //C:\Users\alist\Desktop\cv\Lena2light.jpg
@@ -410,6 +485,7 @@ void lab6() {
 //C:\Users\alist\Desktop\cv\photo.png
 //C:\Users\alist\Desktop\cv\sunflower.jpg
 //C:\Users\alist\Desktop\cv\daises.jfif
+//C:\Users\alist\Desktop\cv\chackmate.png
 int main() {
 
 	lab6();

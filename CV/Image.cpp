@@ -109,7 +109,7 @@ CV_labs::Image::Image(int rowsNum, int colsNum, double * data) {
 
 	for (int i = 0; i < size; i++) {
 
-		this->data[i] = data[i] * 255;
+		this->data[i] = std::max(std::min((int)std::round(data[i] * 255), 255), 0);
 	}
 }
 
@@ -280,7 +280,7 @@ Mat Image::GetMat() const {
 //Get copy of image with lower size
 Image CV_labs::Image::GetDownsampledImage(double scale) const{
 
-	if (scale <= 1) {
+	if (scale < 1) {
 
 		throw std::invalid_argument("Scale must be greater then 1");
 	}
@@ -295,11 +295,26 @@ Image CV_labs::Image::GetDownsampledImage(double scale) const{
 	result.colsNum = (int)round(this->colsNum / scale);
 
 	result.data = new uchar[result.rowsNum * result.colsNum];
+	int rowIndex, colIndex;
+	int pos;
+	double offset = scale / 2.0;
 
 	for (int i = 0; i < result.rowsNum; i++) {
 		for (int j = 0; j < result.colsNum; j++) {
 
-			result.data[i * result.colsNum + j] = this->data[(int)round(i * scale) * this->colsNum + (int)round(j * scale)];
+			rowIndex = (int)(i * scale + offset) - 1;
+			colIndex = (int)(j * scale + offset) - 1;
+			pos = i * result.colsNum + j;
+
+			result.data[pos] = 0.25 * (
+				this->data[rowIndex * this->colsNum + colIndex] + 
+				this->data[rowIndex * this->colsNum + colIndex + 1] + 
+				this->data[(rowIndex + 1) * this->colsNum + colIndex] + 
+				this->data[(rowIndex + 1) * this->colsNum + colIndex + 1]
+			);
+			//result.data[pos] += 0.25 * this->data[rowIndex * this->colsNum + colIndex + 1];
+			//result.data[pos] += 0.25 * this->data[(rowIndex + 1) * this->colsNum + colIndex];
+			//result.data[pos] += 0.25 * this->data[(rowIndex + 1) * this->colsNum + colIndex + 1];
 		}
 	}
 
@@ -564,26 +579,21 @@ void Image::RotateImage(double angle) {
 //Calculate absolute differense of two images and return result as image.
 Image Image::CalcAbsoluteDiff(const Image& img2) const {
 
-	if (this->rowsNum == img2.rowsNum && this->colsNum == img2.colsNum) {
+	Image result;
 
-		Image result;
+	result.rowsNum = std::min(this->rowsNum, img2.rowsNum);
+	result.colsNum = std::min(this->colsNum, img2.colsNum);
 
-		result.rowsNum = img2.rowsNum;
-		result.colsNum = img2.colsNum;
-		result.data = new uchar[result.rowsNum * result.colsNum];
+	result.data = new uchar[result.rowsNum * result.colsNum];
 
-		int size = result.rowsNum * result.colsNum;
-		for (int i = 0; i < size; i++) {
+	for (int i = 0; i < result.rowsNum; i++) {
+		for (int j = 0; j < result.colsNum; j++) {
 
-			result.data[i] = std::abs(this->data[i] - img2.data[i]);
+			result.data[i * result.colsNum + j] = std::abs(this->data[i * this->colsNum + j] - img2.data[i * img2.colsNum + j]);
 		}
-
-		return result;
 	}
-	else {
 
-		throw std::out_of_range("Images dimensions not match");
-	}
+	return result;
 }
 
 //Insert other image into this image.

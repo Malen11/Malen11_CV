@@ -4,7 +4,7 @@
 using namespace std;
 using namespace CV_labs;
 
-Image ImageFilters::ApplyFilter(const Image & image, Core core, int interpolateType) {
+Image ImageFilters::ApplyFilter(const Image & image, Core core, int interpolateType, bool normalizeData) {
 	
 	double* data = image.GetDataD();
 
@@ -12,33 +12,41 @@ Image ImageFilters::ApplyFilter(const Image & image, Core core, int interpolateT
 
 	double* resultData = ApplyFilterRaw(image.GetRowsNumber(), image.GetColsNumber(), data, core, interpolateType);
 
-	double* normalizedResultData = NormalizeData(image.GetSize(), resultData);
+	if (normalizeData == true) {
 
-	Image result(image.GetRowsNumber(), image.GetColsNumber(), normalizedResultData);
+		double* normalizedResultData = NormalizeData(image.GetSize(), resultData);
+		delete[] resultData;
+		resultData = normalizedResultData;
+	}
+
+	Image result(image.GetRowsNumber(), image.GetColsNumber(), resultData);
 
 	delete[] data;
 	//delete[] normalizedData;
 	delete[] resultData;
-	delete[] normalizedResultData;
 
 	return result;
 }
 
-Image ImageFilters::ApplyFilter(const Image & image, SeparableCore core, int interpolateType) {
+Image ImageFilters::ApplyFilter(const Image & image, SeparableCore core, int interpolateType, bool normalizeData) {
 
 	double* data = image.GetDataD();
 
 	//double* normalizedData = NormalizeData(image.GetSize(), data);
 	double* resultData = ApplyFilterRaw(image.GetRowsNumber(), image.GetColsNumber(), data, core, interpolateType);
 
-	double* normalizedResultData = NormalizeData(image.GetSize(), resultData);
+	if (normalizeData == true) {
 
-	Image result(image.GetRowsNumber(), image.GetColsNumber(), normalizedResultData);
+		double* normalizedResultData = NormalizeData(image.GetSize(), resultData);
+		delete[] resultData;
+		resultData = normalizedResultData;
+	}
+
+	Image result(image.GetRowsNumber(), image.GetColsNumber(), resultData);
 
 	delete[] data;
 	//delete[] normalizedData;
 	delete[] resultData;
-	delete[] normalizedResultData;
 
 	return result;
 }

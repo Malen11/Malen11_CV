@@ -45,10 +45,10 @@ namespace CV_labs {
 		static const double PI() { return std::atan(1.0) * 4; }
 
 		//Apply filter from core to image
-		static Image ApplyFilter(const Image& image, Core core, int interpolateType = kInterpolateZero);
+		static Image ApplyFilter(const Image& image, Core core, int interpolateType = kInterpolateZero, bool normalizeData = true);
 
 		//Apply filter from core to image
-		static Image ApplyFilter(const Image& image, SeparableCore core, int interpolateType = kInterpolateZero);
+		static Image ApplyFilter(const Image& image, SeparableCore core, int interpolateType = kInterpolateZero, bool normalizeData = true);
 
 		//Apply filter from core to image data
 		static double* ApplyFilterRaw(int rows, int cols, double* data, Core core, int interpolateType = kInterpolateZero);
@@ -149,16 +149,20 @@ namespace CV_labs {
 
 	inline double ImageFilters::GetVirtualPixelZero(int row, int col, int rows, int cols, const double* const data) {
 
-		if (row >= 0 && row < rows - 1 && col >= 0 && col < cols - 1)
+		if (row >= 0 && row < rows - 1 && col >= 0 && col < cols - 1) {
+
 			return data[row * cols + col];
+		}
 
 		return 0;
 	}
 
 	inline double ImageFilters::GetVirtualPixelBorder(int row, int col, int rows, int cols, const double* const data) {
 
-		if (row >= 0 && row < rows - 1 && col >= 0 && col < cols - 1)
+		if (row >= 0 && row < rows - 1 && col >= 0 && col < cols - 1) {
+
 			return data[row * cols + col];
+		}
 
 		return data[std::min(rows - 1, std::max(row, 0)) *cols + std::min(cols - 1, std::max(col, 0))];
 	}

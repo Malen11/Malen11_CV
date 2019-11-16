@@ -7,6 +7,65 @@ using namespace CV_labs;
 //extern double testAlpha;
 
 //create Descriptors
+std::vector<Descriptor> CV_labs::ImageDescriptorMethods::CreateDescriptors(ScaleSpace & scaleSpace, std::vector<ScalePoint> points, int DescriptorSizeD, int histogramNumD, int intervalsNum, int descriptorType, int descriptorNormalizationType) {
+
+	std::vector<Descriptor> result;
+	
+	vector<double> scales;
+	bool isAdded;
+	double eps = 0.00000001;
+
+	//get all possible sigma from points
+	for (int pointIndex = 0; pointIndex < points.size(); pointIndex++) {
+
+		isAdded = false;
+		for (int scaleIndex = 0; scaleIndex < scales.size(); scaleIndex++) {
+			
+			if (std::abs(points[pointIndex].scale - scales[scaleIndex]) < eps) {
+				
+				isAdded = true;
+				break;
+			}
+		}
+
+		if (isAdded == false) {
+			scales.push_back(points[pointIndex].scale);
+		}
+	}
+
+	vector<Point> pointsInScale; 
+	for (int scaleIndex = 0; scaleIndex < scales.size(); scaleIndex++) {
+		
+		Image tmpImage = scaleSpace.GetImage(scales[scaleIndex]);
+		double* data = tmpImage.GetDataD();
+
+		vector<Point> pointsInScale;
+		for (int pointIndex = 0; pointIndex < points.size(); pointIndex++) {
+
+			if (std::abs(points[pointIndex].scale - scales[scaleIndex]) < eps) {
+
+				pointsInScale.push_back(scaleSpace.ConvertCoordinate(points[pointIndex].point, scales[scaleIndex]));
+			}
+		}
+
+		//double* normalizedData = NormalizeData(image.GetSize(), data);
+
+		std::vector<Descriptor> tmp = CreateDescriptorsRaw(tmpImage.GetRowsNumber(), tmpImage.GetColsNumber(), data, pointsInScale, DescriptorSizeD, histogramNumD, intervalsNum, descriptorType, descriptorNormalizationType);
+		
+		for (int pointIndex = 0; pointIndex < pointsInScale.size(); pointIndex++) {
+			tmp[pointIndex].point = scaleSpace.RestoreCoordinate(pointsInScale[pointIndex], scales[scaleIndex]);
+			result.push_back(tmp[pointIndex]);
+		}
+
+		pointsInScale.clear();
+		tmp.clear();
+		delete[] data;
+	}
+
+	return result;
+}
+
+//create Descriptors
 std::vector<Descriptor> CV_labs::ImageDescriptorMethods::CreateDescriptors(Image & image, std::vector<Point> points, int DescriptorSizeD, int histogramNumD, int intervalsNum, int descriptorType, int descriptorNormalizationType) {
 
 	double* data = image.GetDataD();

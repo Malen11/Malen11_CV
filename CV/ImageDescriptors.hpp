@@ -2,6 +2,7 @@
 #include "stdafx.h"
 #include "Image.hpp"
 #include "ImageFilters.hpp"
+#include "ScaleSpace.hpp"
 
 namespace CV_labs {
 
@@ -41,6 +42,9 @@ namespace CV_labs {
 		static const int kDescriptorsMatchingBase = 401;	//Descriptor matching type (by max matching, have multiselection!)
 		static const int kDescriptorsMatchingNNDR = 402;	//Descriptor matching type (Next Nearest Distance Ratio)
 		static const int kDescriptorsMatchingMutal = 403;	//Descriptor matching type (Mutal choice)
+
+		//create Descriptors
+		static std::vector<Descriptor> CreateDescriptors(ScaleSpace& scaleSpace, std::vector<ScalePoint> points, int DescriptorSizeD, int histogramNumD, int intervalsNum, int descriptorType = kDescriptorTypeSquare, int descriptorNormalizationType = kDescriptorNormalizationNone);
 
 		//create Descriptors
 		static std::vector<Descriptor> CreateDescriptors(Image& image, std::vector<Point> points, int DescriptorSizeD, int histogramNumD, int intervalsNum, int descriptorType = kDescriptorTypeSquare, int descriptorNormalizationType = kDescriptorNormalizationNone);

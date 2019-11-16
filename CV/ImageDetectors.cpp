@@ -4,6 +4,56 @@
 using namespace std;
 using namespace CV_labs;
 
+namespace cv {
+	/** function MatPlotPoints */
+	cv::Mat MatPlotPoints(Image& img, vector<CV_labs::Point> points, int color = 0) {
+
+		cv::Mat temp = img.GetMat();
+		cv::Mat colored;
+		cv::cvtColor(temp, colored, cv::COLOR_GRAY2BGR);
+
+		for (vector<CV_labs::Point>::iterator it = points.begin(); it != points.end(); it++) {
+
+			circle(colored, cv::Point((*it).x, (*it).y), 1, CV_RGB(255, 0, 0), 3);
+		}
+
+		return colored;
+	}
+
+	cv::Mat MatPlotLines(Image& img, vector<CV_labs::Line> lines, int color = 0) {
+
+		cv::Mat temp = img.GetMat();
+		cv::Mat colored;
+		cv::cvtColor(temp, colored, cv::COLOR_GRAY2BGR);
+		RNG rng(12345);
+
+		for (vector<CV_labs::Line>::iterator it = lines.begin(); it != lines.end(); it++) {
+			Scalar color = Scalar(rng.uniform(0, 255), rng.uniform(0, 255), rng.uniform(0, 255));
+			line(colored, cv::Point((*it).pointA.x, (*it).pointA.y), cv::Point((*it).pointB.x, (*it).pointB.y), color, 2);
+		}
+
+		return colored;
+	}
+
+	cv::Mat MatPlotBlobs(Image& img, vector<CV_labs::ScalePoint> points, int color = 0) {
+
+		cv::Mat temp = img.GetMat();
+		cv::Mat colored;
+		cv::cvtColor(temp, colored, cv::COLOR_GRAY2BGR);
+
+		for (vector<CV_labs::ScalePoint>::iterator it = points.begin(); it != points.end(); it++) {
+
+			//проверка, что все значения допустимы (костыль, потом удалить)
+			img.GetValueAt((*it).point);
+
+			//if ((*it).point.x > 300 && (*it).point.x < 340 && (*it).point.y > 140 && (*it).point.y < 180)
+			circle(colored, cv::Point((*it).point.x, (*it).point.y), sqrt(2) * (*it).scale, CV_RGB(255, 0, 0), 1);
+		}
+
+		return colored;
+	}
+}
+
 ImageDetectors::ImageDetectors()
 {
 }
@@ -131,15 +181,98 @@ std::vector<Point> ImageDetectors::MoravecRaw(int rows, int cols, double * data,
 std::vector<Point> ImageDetectors::Harris(Image & image, int wk, int localMinK, double Threshold, int pointsNeeded, int PartDerivativeType) {
 
 	double* data = image.GetNormalizedImageDataD();
-	vector<Point> result = HarrisRaw(image.GetRowsNumber(), image.GetColsNumber(), data, wk, localMinK, Threshold, pointsNeeded, PartDerivativeType);
+
+	//double* dataSmoothed = ImageFilters::ApplyFilterRaw(image.GetRowsNumber(), image.GetColsNumber(), data, ImageFilters::GenerateGaussSeparableCore((double)wk / 3, wk), ImageFilters::kInterpolateReflection);
+
+	vector<Point> result = HarrisRaw(image.GetRowsNumber(), image.GetColsNumber(), data, (double)wk / 3, wk, (double)wk / 3, localMinK, Threshold, pointsNeeded, PartDerivativeType);
 
 	delete[] data;
+	//delete[] dataSmoothed;
+
+	return result;
+}
+
+//apply Harris to Image
+std::vector<Point> ImageDetectors::Harris(Image & image, double sigmaD,int wk, double sigmaI, int localMinK, double Threshold, int pointsNeeded,  int PartDerivativeType) {
+
+	double* data = image.GetNormalizedImageDataD();
+
+	//double* dataSmoothed = ImageFilters::ApplyFilterRaw(image.GetRowsNumber(), image.GetColsNumber(), data, ImageFilters::GenerateGaussSeparableCore((double)wk / 3, wk), ImageFilters::kInterpolateReflection);
+
+	vector<Point> result = HarrisRaw(image.GetRowsNumber(), image.GetColsNumber(), data, sigmaD, wk, sigmaI, localMinK, Threshold, pointsNeeded, PartDerivativeType);
+
+	delete[] data;
+	//delete[] dataSmoothed;
 
 	return result;
 }
 
 //apply Harris to Image data
-std::vector<Point> ImageDetectors::HarrisRaw(int rows, int cols, double * data, int wk, int localMinK, double Threshold, int pointsNeeded, int PartDerivativeType) {
+std::vector<Point> ImageDetectors::HarrisRaw(int rows, int cols, double * data, double sigmaD, int wk, double sigmaI, int localMinK, double Threshold, int pointsNeeded,  int PartDerivativeType) {
+
+	//calculate response map
+	double* responseMap = HarrisResponseRaw(rows, cols, data, sigmaD, wk, sigmaI, PartDerivativeType, kHarrisResponseForstner);
+
+	std::vector<Point> result;
+	bool isPoint;
+	int pos;
+
+	//check is some point greater then threshold AND local max
+	//double localValue;
+
+	for (int i = 0; i < rows; i++) {
+		for (int j = 0; j < cols; j++) {
+
+			isPoint = true;
+			pos = i * cols + j;
+
+			if (responseMap[pos] > Threshold) {
+				for (int u = -localMinK; isPoint && (u <= localMinK); u++) {
+					for (int v = -localMinK; isPoint && (v <= localMinK); v++) {
+
+						if (u == 0 && v == 0) {
+							continue;
+						}
+
+						if (responseMap[pos] <= ImageFilters::GetVirtualPixelZero(i + u, j + v, rows, cols, responseMap)) {
+
+							isPoint = false;
+						}
+					}
+				}
+			}
+			else {
+				isPoint = false;
+			}
+
+			if (isPoint) {
+
+				result.push_back({ j, i });
+			}
+		}
+	}
+
+	std::vector<Point> resultANMS;
+
+	//calculate ANMS or not
+	if (pointsNeeded > 0) {
+
+		resultANMS = ANMS(result, rows, cols, responseMap, pointsNeeded, 1);
+		result.clear();
+		result = resultANMS;
+		resultANMS.clear();
+	}
+
+	delete[] responseMap;
+
+	resultANMS.clear();
+	resultANMS.shrink_to_fit();
+
+	return result;
+}
+
+//calculate response for Harris
+double * ImageDetectors::HarrisResponseRaw(int rows, int cols, double * data, double sigmaD, int wk, double sigmaI, int PartDerivativeType, int harrisResponseType) {
 
 	int size = rows * cols;
 	int pos;
@@ -147,20 +280,22 @@ std::vector<Point> ImageDetectors::HarrisRaw(int rows, int cols, double * data, 
 	//part derivative X, Y
 	double *partDerX = NULL, *partDerY = NULL;
 
+	double * dataSmoothed = ImageFilters::ApplyFilterRaw(rows, cols, data, ImageFilters::GenerateGaussSeparableCore(sigmaD), ImageFilters::kInterpolateBorder);
+
 	if (PartDerivativeType == ImageFilters::kPartDerivativeTypeSobelCore) {
 
-		partDerX = ImageFilters::ApplyFilterRaw(rows, cols, data, ImageFilters::GenerateSobelSeparableCore(ImageFilters::kPartDerivativeDirectionX), ImageFilters::kInterpolateBorder);
-		partDerY = ImageFilters::ApplyFilterRaw(rows, cols, data, ImageFilters::GenerateSobelSeparableCore(ImageFilters::kPartDerivativeDirectionY), ImageFilters::kInterpolateBorder);
+		partDerX = ImageFilters::ApplyFilterRaw(rows, cols, dataSmoothed, ImageFilters::GenerateSobelSeparableCore(ImageFilters::kPartDerivativeDirectionX), ImageFilters::kInterpolateBorder);
+		partDerY = ImageFilters::ApplyFilterRaw(rows, cols, dataSmoothed, ImageFilters::GenerateSobelSeparableCore(ImageFilters::kPartDerivativeDirectionY), ImageFilters::kInterpolateBorder);
 	}
 	else if (PartDerivativeType == ImageFilters::kPartDerivativeTypePrewittCore) {
 
-		partDerX = ImageFilters::ApplyFilterRaw(rows, cols, data, ImageFilters::GeneratePrewittSeparableCore(ImageFilters::kPartDerivativeDirectionX), ImageFilters::kInterpolateBorder);
-		partDerY = ImageFilters::ApplyFilterRaw(rows, cols, data, ImageFilters::GeneratePrewittSeparableCore(ImageFilters::kPartDerivativeDirectionY), ImageFilters::kInterpolateBorder);
+		partDerX = ImageFilters::ApplyFilterRaw(rows, cols, dataSmoothed, ImageFilters::GeneratePrewittSeparableCore(ImageFilters::kPartDerivativeDirectionX), ImageFilters::kInterpolateBorder);
+		partDerY = ImageFilters::ApplyFilterRaw(rows, cols, dataSmoothed, ImageFilters::GeneratePrewittSeparableCore(ImageFilters::kPartDerivativeDirectionY), ImageFilters::kInterpolateBorder);
 	}
 	else if (PartDerivativeType == ImageFilters::kPartDerivativeTypeScharrCore) {
 
-		partDerX = ImageFilters::ApplyFilterRaw(rows, cols, data, ImageFilters::GenerateScharrSeparableCore(ImageFilters::kPartDerivativeDirectionX), ImageFilters::kInterpolateBorder);
-		partDerY = ImageFilters::ApplyFilterRaw(rows, cols, data, ImageFilters::GenerateScharrSeparableCore(ImageFilters::kPartDerivativeDirectionY), ImageFilters::kInterpolateBorder);
+		partDerX = ImageFilters::ApplyFilterRaw(rows, cols, dataSmoothed, ImageFilters::GenerateScharrSeparableCore(ImageFilters::kPartDerivativeDirectionX), ImageFilters::kInterpolateBorder);
+		partDerY = ImageFilters::ApplyFilterRaw(rows, cols, dataSmoothed, ImageFilters::GenerateScharrSeparableCore(ImageFilters::kPartDerivativeDirectionY), ImageFilters::kInterpolateBorder);
 	}
 
 	double* A = new double[size];
@@ -169,9 +304,19 @@ std::vector<Point> ImageDetectors::HarrisRaw(int rows, int cols, double * data, 
 
 	//gauss core for gauss weight
 	int gaussSizeD = 2 * wk + 1;//gause size of dimension (gaussSizeD x gaussSizeD)-square matrix
-	Core gaussCore = ImageFilters::GenerateGaussCore(wk / 3.0, wk);
-	double Ix, Iy;
+	Core gaussCore = ImageFilters::GenerateGaussCore(sigmaI, wk);
 	double* gaussWeight = gaussCore.data;
+
+	double* Ix2 = new double[size];
+	double* Iy2 = new double[size];
+	double* IxIy = new double[size];
+
+	for (int i = 0; i < size; i++) {
+
+		Ix2[i] = partDerX[i] * partDerX[i];
+		Iy2[i] = partDerY[i] * partDerY[i];
+		IxIy[i] = partDerX[i] * partDerY[i];
+	}
 
 	int gpos, iB, jB;	//B-Biased
 
@@ -189,115 +334,30 @@ std::vector<Point> ImageDetectors::HarrisRaw(int rows, int cols, double * data, 
 
 					iB = i + u;
 					jB = j + v;
+					gpos = (wk + u) * gaussSizeD + (wk + v);
 
 					if (0 <= iB && iB < rows - 1 && 0 <= jB && jB < cols - 1) {
 
-						Ix = partDerX[iB * cols + jB];
-						Iy = partDerY[iB * cols + jB];
+						A[pos] += Ix2[iB * cols + jB] * gaussWeight[gpos];
+						B[pos] += IxIy[iB * cols + jB] * gaussWeight[gpos];
+						C[pos] += Iy2[iB * cols + jB] * gaussWeight[gpos];
 					}
 					else {
 
-						Ix = ImageFilters::GetVirtualPixelZero(iB, jB, rows, cols, partDerX);
-						Iy = ImageFilters::GetVirtualPixelZero(iB, jB, rows, cols, partDerY);
+						A[pos] += ImageFilters::GetVirtualPixelZero(iB, jB, rows, cols, Ix2) * gaussWeight[gpos];
+						B[pos] += ImageFilters::GetVirtualPixelZero(iB, jB, rows, cols, IxIy) * gaussWeight[gpos];
+						C[pos] += ImageFilters::GetVirtualPixelZero(iB, jB, rows, cols, Iy2) * gaussWeight[gpos];
 					}
-
-					gpos = (wk + u) * gaussSizeD + (wk + v);
-
-					A[pos] += Ix * Ix * gaussWeight[gpos];
-					B[pos] += Ix * Iy * gaussWeight[gpos];
-					C[pos] += Iy * Iy * gaussWeight[gpos];
 				}
 			}
 		}
 	}
 
-	//calculate response map
-	double* responseMap = HarrisResponse(rows, cols, A, B, C, kHarrisResponseForstner);
-
-	//show response map
-	/*double* responseMapNormalized = ImageFilters::NormalizeData(rows * cols, responseMap);
-	Image test(rows, cols, responseMapNormalized);
-	cv::imshow("test" + std::to_string(rand()), test.GetMat());*/
-
-	/*double* responseMapNormalized = ImageFilters::NormalizeData(gaussSizeD * gaussSizeD, gaussWeight);
-	Image test((2 * gaussCore.xk + 1), (2 * gaussCore.yk + 1), responseMapNormalized);
-	cv::imwrite("pyramid/gauss.png", test.GetMat());*/
-
-	std::vector<Point> result;
-	Point point;
-	bool isPoint;
-	//int r;
-
-	//check is some point greater then threshold AND local max
-	//double localValue;
-
-	for (int i = 0; i < rows; i++) {
-		for (int j = 0; j < cols; j++) {
-
-			isPoint = true;
-			pos = i * cols + j;
-
-			if (responseMap[pos] > Threshold) {
-				for (int u = -localMinK; u <= localMinK && isPoint; u++) {
-					for (int v = -localMinK; v <= localMinK && isPoint; v++) {
-						if ((localMinK >= sqrt(pow(u, 2) + pow(v, 2))) && !(u == 0 && v == 0) && responseMap[pos] <= ImageFilters::GetVirtualPixelZero(i + u, j + v, rows, cols, responseMap)) {
-							isPoint = false;
-						}
-					}
-				}
-			}
-			else {
-				isPoint = false;
-			}
-
-			if (isPoint) {
-
-				point.x = j;
-				point.y = i;
-
-				result.push_back(point);
-			}
-		}
-	}
-
-	//clear arrays
-	delete[] A;
-	delete[] B;
-	delete[] C;
-
-	std::vector<Point> resultANMS;
-
-	//calculate ANMS or not
-	if (pointsNeeded > 0) {
-
-		resultANMS = ANMS(result, rows, cols, responseMap, pointsNeeded, 1);
-		result.clear();
-		result = resultANMS;
-		resultANMS.clear();
-	}
-
-	delete[] responseMap;
-
-	return result;
-}
-
-//calculate response for Harris
-double * ImageDetectors::HarrisResponse(int rows, int cols, double * A, double * B, double * C, int harrisResponseType) {
-
-	int size = rows * cols;
 	double* result = new double[size];
-	double k = 0.05; // for base
 					 
-	//in work!
-	/*if (harrisResponseType == kHarrisResponseDirect) {
-
-		delete[] result;
-		result = NULL;
-	}
-	else */
 	if (harrisResponseType == kHarrisResponseBase) {
 		for (int i = 0; i < size; i++) {
-			result[i] = A[i] * C[i] - pow(B[i], 2) - k * pow(A[i] + C[i], 2);
+			result[i] = A[i] * C[i] - pow(B[i], 2) - 0.05 * pow(A[i] + C[i], 2);
 		}
 	}
 	else if(harrisResponseType == kHarrisResponseForstner) {
@@ -312,6 +372,17 @@ double * ImageDetectors::HarrisResponse(int rows, int cols, double * A, double *
 	else {
 		throw new invalid_argument("Unexpected harrisResponseType value");
 	}
+
+	//clear arrays
+	delete[] dataSmoothed;
+	delete[] gaussWeight;
+
+	delete[] Ix2, Iy2, IxIy;
+	delete[] partDerX, partDerY;
+
+	delete[] A;
+	delete[] B;
+	delete[] C;
 
 	return result;
 }
@@ -390,162 +461,476 @@ std::vector<Point> ImageDetectors::ANMS(std::vector<Point> points, int rows, int
 	return result;
 }
 
-vector<BlobPoint> ImageDetectors::DifferenceOfGaussians(const Image & image) {
+//vector<ScalePoint> ImageDetectors::DifferenceOfGaussians(const Image & image) {
+//
+//	ScaleSpace imagePyramid(image, 0.5, 1.6, 5, 5, 3);
+//
+//	vector<ScalePoint> pointsOfInterest = ImageDetectors::DifferenceOfGaussiansRaw(imagePyramid);
+//
+//	return pointsOfInterest;
+//}
 
-	ImagePyramid imagePyramid(image, 0.5, 1.6, 5, 5, 3);
+//double* ImageDetectors::DifferenceOfGaussiansRaw(const Image &gaussian0, const Image &gaussian1) {
+//	
+//	int rowsNum = gaussian0.GetRowsNumber();
+//	int colsNum = gaussian0.GetColsNumber();
+//	
+//	if (rowsNum != gaussian1.GetRowsNumber() || colsNum != gaussian1.GetColsNumber()) {
+//		throw new std::invalid_argument("Image dimension not match");
+//	}
+//	int size = rowsNum * colsNum;
+//
+//	double* dataDif = new double[size];
+//	double* data0 = gaussian0.GetDataD();
+//	double* data1 = gaussian1.GetDataD();
+//
+//	for (int i = 0; i < size; i++) {
+//		
+//		dataDif[i] = data1[i] - data0[i];
+//	}
+//	/*
+//	if (gaussians.GetLayersNum() + gaussians.GetCrossLayersNum() < 4) {
+//		throw new std::invalid_argument("Gaussians must have at least 4 layers and cross layers");
+//	}
+//
+//	double* dataScale0 = nullptr;
+//	double* dataScale1 = nullptr;
+//
+//	double* dogPrevious = nullptr;
+//	double* dogTarget = nullptr;
+//	double* dogNext = nullptr;
+//
+//	vector<CV_labs::Point> extremums;
+//
+//	int rowsNum, colsNum, size;
+//	double sigma;
+//
+//	for (int octave = 0; octave < gaussians.GetOctavesNum(); octave++) {
+//
+//		rowsNum = gaussians.GetImage(octave, 0).GetRowsNumber();
+//		colsNum = gaussians.GetImage(octave, 0).GetColsNumber();
+//		size = rowsNum * colsNum;
+//
+//		for (int layer = 1; layer < gaussians.GetLayersNum() + gaussians.GetCrossLayersNum() - 2; layer++) {
+//
+//			if (layer == 1) {
+//
+//				dataScale0 = gaussians.GetImage(octave, layer - 1).GetDataD();
+//
+//				dataScale1 = gaussians.GetImage(octave, layer).GetDataD();
+//				dogPrevious = arrayDifference(size, dataScale1, dataScale0);
+//				delete[] dataScale0;
+//				dataScale0 = dataScale1;
+//
+//				dataScale1 = gaussians.GetImage(octave, layer + 1).GetDataD();
+//				dogTarget = arrayDifference(size, dataScale0, dataScale1);
+//				delete[] dataScale0;
+//				dataScale0 = dataScale1;
+//			}
+//
+//			dataScale1 = gaussians.GetImage(octave, layer + 2).GetDataD();
+//			dogNext = arrayDifference(size, dataScale0, dataScale1);
+//			delete[] dataScale0;
+//			dataScale0 = dataScale1;
+//
+//			/////////////////////////////
+//			//if (octave != 0) {
+//			////	Image tempImage0(rowsNum, colsNum, dataScale0);
+//			////	imshow("dataScale0", tempImage0.GetUpsampledImage(std::pow(2, octave)).GetNormalizedImage().GetMat());
+//			////	Image tempImage1(rowsNum, colsNum, dataScale1);
+//			////	imshow("dataScale1", tempImage1.GetUpsampledImage(std::pow(2, octave)).GetNormalizedImage().GetMat());
+//			//	
+//			////	double max = dogPrevious[0], min = dogPrevious[0];
+//			////	for (int i = 0; i < size; i++) {
+//			////		if (max < dogPrevious[i])
+//			////			max = dogPrevious[i];
+//			////		if (min > dogPrevious[i])
+//			////			min = dogPrevious[i];
+//			////	}
+//			//	
+//			////	Image tempImageP(rowsNum, colsNum, ImageFilters::NormalizeData(size, dogPrevious));
+//			////	imshow("dogPrevious", tempImageP.GetMat());
+//			////	Image tempImageT(rowsNum, colsNum, ImageFilters::NormalizeData(size, dogTarget));
+//			////	imshow("dogTarget", tempImageT.GetMat());
+//			////	Image tempImageN(rowsNum, colsNum, ImageFilters::NormalizeData(size, dogNext));
+//			////	imshow("dogNext", tempImageN.GetMat());
+//			////	cvWaitKey();
+//			//}
+//			//////////////////////////////
+//			extremums = findExtremumIn3D(rowsNum, colsNum, dogTarget, dogPrevious, dogNext);
+//			sigma = gaussians.GetImageSigma(octave, layer);
+//
+//			for (int pos = 0; pos < extremums.size(); pos++) {
+//				pointsOfInterest.push_back({ gaussians.RestoreCoordinate(extremums[pos], octave, layer), sigma });
+//			}
+//
+//			extremums.clear();
+//			
+//			delete[] dogPrevious;
+//			dogPrevious = dogTarget;
+//			dogTarget = dogNext;
+//			dogNext = nullptr;
+//		}
+//
+//		delete[] dogTarget, dogNext, dataScale0, dataScale1;
+//
+//		////////
+//		//break;
+//		///////
+//		
+//	}*/
+//
+//	return dataDif;
+//}
 
-	vector<BlobPoint> pointsOfInterest = ImageDetectors::DifferenceOfGaussiansRaw(imagePyramid);
+//std::vector<Point> CV_labs::ImageDetectors::DifferenceOfGaussians(const vector<Image> & gaussians) {
+//	
+//	vector<Point> pointsOfInterest;
+//
+//	if (gaussians.size() < 4) {
+//		throw new std::invalid_argument("Vector must contain at least 4 elements");
+//	}
+//
+//	double* dataScale0 = nullptr;
+//	double* dataScale1 = nullptr;
+//
+//	double* dogPrevious = nullptr;
+//	double* dogTarget = nullptr;
+//	double* dogNext = nullptr;
+//
+//	vector<CV_labs::Point> extremums;
+//
+//	int rowsNum = gaussians[0].GetRowsNumber();
+//	int colsNum = gaussians[0].GetRowsNumber();
+//	int size = rowsNum * colsNum;
+//
+//	for (int index = 1; index <= gaussians.size() - 1; index++) {
+//
+//			if (index == 1) {
+//
+//				dataScale0 = gaussians[index - 1].GetDataD();
+//
+//				dataScale1 = gaussians[index].GetDataD();
+//				dogPrevious = arrayDifference(size, dataScale1, dataScale0);
+//				delete[] dataScale0;
+//				dataScale0 = dataScale1;
+//
+//				dataScale1 = gaussians[index + 1].GetDataD();
+//				dogTarget = arrayDifference(size, dataScale0, dataScale1);
+//				delete[] dataScale0;
+//				dataScale0 = dataScale1;
+//			}
+//
+//			dataScale1 = gaussians[index + 2].GetDataD();
+//			dogNext = arrayDifference(size, dataScale0, dataScale1);
+//			delete[] dataScale0;
+//			dataScale0 = dataScale1;
+//
+//			extremums = findExtremumIn3D(rowsNum, colsNum, dogTarget, dogPrevious, dogNext);
+//
+//			for (int pos = 0; pos < extremums.size(); pos++) {
+//				pointsOfInterest.push_back(extremums[pos]);
+//			}
+//
+//			extremums.clear();
+//
+//			delete[] dogPrevious;
+//			dogPrevious = dogTarget;
+//			dogTarget = dogNext;
+//			dogNext = nullptr;
+//		}
+//
+//		delete[] dogTarget, dogNext, dataScale0, dataScale1;
+//
+//		////////
+//		//break;
+//		////////
+//
+//	return pointsOfInterest;
+//}
 
-	return pointsOfInterest;
-}
+//find points of interest by via DoG and Harris
+std::vector<ScalePoint> CV_labs::ImageDetectors::FindPointsOfInterest(const ScaleSpace & imagePyramid, int wk, int localMinK, double harrisThreshold, double dogThreshold) {
 
-vector<BlobPoint> ImageDetectors::DifferenceOfGaussiansRaw(const CV_labs::ImagePyramid & gaussians) {
-	
-	vector<BlobPoint> pointsOfInterest;
+	int /*wk = 2, localMinK = 2,*/ pointsNeeded = -1;
+	//double threshold = 0.01;
 
-	if (gaussians.GetLayersNum() + gaussians.GetCrossLayersNum() < 4) {
-		throw new std::invalid_argument("Gaussians must have at least 4 layers and cross layers");
-	}
+	vector<ScalePoint> pointsOfInterest;
 
-	double* dataScale0 = nullptr;
-	double* dataScale1 = nullptr;
-
-	double* dogPrevious = nullptr;
-	double* dogTarget = nullptr;
-	double* dogNext = nullptr;
-
-	vector<CV_labs::Point> extremums;
-
-	int rowsNum, colsNum, size;
+	vector<Point> dogPointsTemp;
+	vector<Point> harrisPoints;
 	double sigma;
 
-	for (int octave = 0; octave < gaussians.GetOctavesNum(); octave++) {
+	double* dogPrev, *dogTarget, *dogNext;
 
-		rowsNum = gaussians.GetImage(octave, 0).GetRowsNumber();
-		colsNum = gaussians.GetImage(octave, 0).GetColsNumber();
-		size = rowsNum * colsNum;
+	for (int octaveIndex = 0; octaveIndex < imagePyramid.GetOctavesNum(); octaveIndex++) {
+		for (int layerIndex = 0; layerIndex < imagePyramid.GetLayersNum(); layerIndex++) {
 
-		//dataScale0 = gaussians.GetImage(octave, 0).GetDataD();
-		//
-		//dataScale1 = gaussians.GetImage(octave, 1).GetDataD();
-		//dogPrevious = arrayDifference(size, dataScale1, dataScale0);
-		///////////////////////////////
-		////if (octave != 0) {
-		////	Image tempImage0(rowsNum, colsNum, dataScale0);
-		////	imshow("dataScale0", tempImage0.GetUpsampledImage(std::pow(2, octave)).GetNormalizedImage().GetMat());
-		////	Image tempImage1(rowsNum, colsNum, dataScale1);
-		////	imshow("dataScale1", tempImage1.GetUpsampledImage(std::pow(2, octave)).GetNormalizedImage().GetMat());
-		////	/*
-		////	double max = dogPrevious[0], min = dogPrevious[0];
-		////	for (int i = 0; i < size; i++) {
-		////		if (max < dogPrevious[i])
-		////			max = dogPrevious[i];
-		////		if (min > dogPrevious[i])
-		////			min = dogPrevious[i];
-		////	}*/
-		////
-		////	Image tempImageP(rowsNum, colsNum, ImageFilters::NormalizeData(size, dogPrevious));
-		////	imshow("dogPrevious", tempImageP.GetUpsampledImage(std::pow(2, octave)).GetMat());
-		////	cvWaitKey();
-		////}
-		////////////////////////////////
-		//delete[] dataScale0;
-		//dataScale0 = dataScale1;
-		//
-		//dataScale1 = gaussians.GetImage(octave, 2).GetDataD();
-		//dogTarget = arrayDifference(size, dataScale0, dataScale1);
-		//delete[] dataScale0;
-		//dataScale0 = dataScale1;
-		//
-		//dataScale1 = gaussians.GetImage(octave, 3).GetDataD();
-		//dogNext = arrayDifference(size, dataScale0, dataScale1);
-		//delete[] dataScale0;
-		//dataScale0 = dataScale1;
-		//
-		//extremums = findExtremumIn3D(rowsNum, colsNum, dogTarget, dogPrevious, dogNext);
-		//
-		//for (int pos = 0; pos < extremums.size(); pos++) {
-		//
-		//	pointsOfInterest.push_back({ gaussians.RestoreCoordinate(extremums[pos], gaussians.GetImageSigma(octave, 1)), gaussians.GetImageSigma(octave, 1) });
-		//}
-		//
-		//extremums.clear();
-		//
-		//delete[] dogPrevious;
-		//dogPrevious = dogTarget;
-		//dogTarget = dogNext;
-		//dogNext = nullptr;
+			Image imageTemp = imagePyramid.GetImage(octaveIndex, layerIndex);
+			int cols = imageTemp.GetColsNumber();
+			int rows = imageTemp.GetRowsNumber();
+			int size = cols * rows;
 
-		for (int layer = 1; layer < gaussians.GetLayersNum() + gaussians.GetCrossLayersNum() - 2; layer++) {
+			vector<Point> harrisPointsTemp = Harris(imageTemp, wk, localMinK, harrisThreshold, pointsNeeded);
 
-			if (layer == 1) {
-
-				dataScale0 = gaussians.GetImage(octave, layer - 1).GetDataD();
-
-				dataScale1 = gaussians.GetImage(octave, layer).GetDataD();
-				dogPrevious = arrayDifference(size, dataScale1, dataScale0);
-				delete[] dataScale0;
-				dataScale0 = dataScale1;
-
-				dataScale1 = gaussians.GetImage(octave, layer + 1).GetDataD();
-				dogTarget = arrayDifference(size, dataScale0, dataScale1);
-				delete[] dataScale0;
-				dataScale0 = dataScale1;
-			}
-
-			dataScale1 = gaussians.GetImage(octave, layer + 2).GetDataD();
-			dogNext = arrayDifference(size, dataScale0, dataScale1);
-			delete[] dataScale0;
-			dataScale0 = dataScale1;
-
-			/////////////////////////////
-			//if (octave != 0) {
-			//	/*Image tempImage0(rowsNum, colsNum, dataScale0);
-			//	imshow("dataScale0", tempImage0.GetUpsampledImage(std::pow(2, octave)).GetNormalizedImage().GetMat());
-			//	Image tempImage1(rowsNum, colsNum, dataScale1);
-			//	imshow("dataScale1", tempImage1.GetUpsampledImage(std::pow(2, octave)).GetNormalizedImage().GetMat());*/
-			//	/*
-			//	double max = dogPrevious[0], min = dogPrevious[0];
-			//	for (int i = 0; i < size; i++) {
-			//		if (max < dogPrevious[i])
-			//			max = dogPrevious[i];
-			//		if (min > dogPrevious[i])
-			//			min = dogPrevious[i];
-			//	}*/
-			//	
-			//	/*Image tempImageP(rowsNum, colsNum, ImageFilters::NormalizeData(size, dogPrevious));
-			//	imshow("dogPrevious", tempImageP.GetMat());
-			//	Image tempImageT(rowsNum, colsNum, ImageFilters::NormalizeData(size, dogTarget));
-			//	imshow("dogTarget", tempImageT.GetMat());
-			//	Image tempImageN(rowsNum, colsNum, ImageFilters::NormalizeData(size, dogNext));
-			//	imshow("dogNext", tempImageN.GetMat());
-			//	cvWaitKey();*/
-			//}
-			//////////////////////////////
-			extremums = findExtremumIn3D(rowsNum, colsNum, dogTarget, dogPrevious, dogNext);
-			sigma = gaussians.GetImageSigma(octave, layer);
-
-			for (int pos = 0; pos < extremums.size(); pos++) {
-				pointsOfInterest.push_back({ gaussians.RestoreCoordinate(extremums[pos], octave, layer), sigma });
-			}
-
-			extremums.clear();
+			dogPrev		= imagePyramid.DoG(octaveIndex, layerIndex - 1);//ImageFilters::NormalizeData(size, DifferenceOfGaussiansRaw(imagePyramid.GetImage(octaveIndex, layerIndex - 1), imageTemp));
+			dogTarget	= imagePyramid.DoG(octaveIndex, layerIndex);//ImageFilters::NormalizeData(size, DifferenceOfGaussiansRaw(imageTemp, imagePyramid.GetImage(octaveIndex, layerIndex + 1)));
+			dogNext		= imagePyramid.DoG(octaveIndex, layerIndex + 1);//ImageFilters::NormalizeData(size, DifferenceOfGaussiansRaw(imagePyramid.GetImage(octaveIndex, layerIndex + 1), imagePyramid.GetImage(octaveIndex, layerIndex + 2)));
 			
-			delete[] dogPrevious;
-			dogPrevious = dogTarget;
-			dogTarget = dogNext;
-			dogNext = nullptr;
+			vector<Point> extremumIn3DPointsTemp = ImageDetectors::ExtremumIn3DRaw(
+				imageTemp.GetRowsNumber(),
+				imageTemp.GetColsNumber(),
+				dogPrev,
+				dogTarget,
+				dogNext,
+				dogThreshold
+			);
+
+			for (int harrisPointIndex = 0; harrisPointIndex < harrisPointsTemp.size(); harrisPointIndex++) {
+				for (int exptremumPointIndex = 0; exptremumPointIndex < extremumIn3DPointsTemp.size(); exptremumPointIndex++) {
+
+					if (harrisPointsTemp[harrisPointIndex].x == extremumIn3DPointsTemp[exptremumPointIndex].x && 
+						harrisPointsTemp[harrisPointIndex].y == extremumIn3DPointsTemp[exptremumPointIndex].y) {
+
+						double sigma = imagePyramid.GetImageSigma(octaveIndex, layerIndex);
+						pointsOfInterest.push_back({ imagePyramid.RestoreCoordinate(harrisPointsTemp[harrisPointIndex], octaveIndex, layerIndex), sigma });
+						break;
+					}
+				}
+			}
+
+			/////////////////////
+			/*string name = "image " + std::to_string(octaveIndex) + " layer " + std::to_string(layerIndex - 1) + " rand " + std::to_string(std::rand());
+			//imshow(name, imagePyramid.GetImage(i, j).GetMat());
+			cv::imwrite("pyramid/" + name + ".png", imageTemp.GetMat());
+
+			Image prev(
+				rows,
+				cols,
+				ImageFilters::NormalizeData(size, DifferenceOfGaussiansRaw(imagePyramid.GetImage(octaveIndex, layerIndex - 1), imageTemp))
+			);
+			name = "dog " + std::to_string(octaveIndex) + " layer " + std::to_string(layerIndex - 1) + " rand " + std::to_string(std::rand());
+			//imshow(name, imagePyramid.GetImage(i, j).GetMat());
+			cv::imwrite("pyramid/" + name + ".png", prev.GetMat());
+
+			Image target(
+				rows,
+				cols,
+				ImageFilters::NormalizeData(size, DifferenceOfGaussiansRaw(imageTemp, imagePyramid.GetImage(octaveIndex, layerIndex + 1)))
+			);
+			name = "dog " + std::to_string(octaveIndex) + " layer " + std::to_string(layerIndex) + " rand " + std::to_string(std::rand());
+			//imshow(name, imagePyramid.GetImage(i, j).GetMat());
+			cv::imwrite("pyramid/" + name + ".png", target.GetMat());
+
+			Image next(
+				rows,
+				cols,
+				ImageFilters::NormalizeData(size, DifferenceOfGaussiansRaw(imagePyramid.GetImage(octaveIndex, layerIndex + 1), imagePyramid.GetImage(octaveIndex, layerIndex + 2)))
+			);
+			name = "dog " + std::to_string(octaveIndex) + " layer " + std::to_string(layerIndex + 1) + " rand " + std::to_string(std::rand());
+			//imshow(name, imagePyramid.GetImage(i, j).GetMat());
+			cv::imwrite("pyramid/" + name + ".png", next.GetMat());
+
+			//cv::imshow("prev ", prev.GetNormalizedImage().GetMat());
+			//cv::imshow("target ", target.GetNormalizedImage().GetMat());
+			//cv::imshow("next ", next.GetNormalizedImage().GetMat());
+
+			//cv::imshow("harris", cv::MatPlotPoints(imageTemp, harrisPointsTemp));
+			name = "harris " + std::to_string(octaveIndex) + " layer " + std::to_string(layerIndex) + " rand " + std::to_string(std::rand());
+			//imshow(name, imagePyramid.GetImage(i, j).GetMat());
+			cv::imwrite("pyramid/" + name + ".png", cv::MatPlotPoints(imageTemp, harrisPointsTemp));
+
+			//cv::imshow("blob's centers", cv::MatPlotPoints(imageTemp, extremumIn3DPointsTemp));
+			name = "blob " + std::to_string(octaveIndex) + " layer " + std::to_string(layerIndex) + " rand " + std::to_string(std::rand());
+			//imshow(name, imagePyramid.GetImage(i, j).GetMat());
+			cv::imwrite("pyramid/" + name + ".png", cv::MatPlotPoints(imageTemp, extremumIn3DPointsTemp));
+
+			//cv::imshow("harris-dog", cv::MatPlotBlobs(imageTemp, pointsOfInterest));
+
+			//cv::waitKey();*/
+			////////////////////
+
+			harrisPointsTemp.clear();
+			harrisPointsTemp.shrink_to_fit();
+			extremumIn3DPointsTemp.clear();
+			extremumIn3DPointsTemp.shrink_to_fit();
+			delete[] dogPrev, dogTarget, dogNext;
 		}
-
-		delete[] dogTarget, dogNext, dataScale0, dataScale1;
-
-		////////
-		//break;
-		///////
 	}
+
+	//vector<ScalePoint> pointsOfInterest;
+	//
+	//double eps = 0.0000001;
+	//
+	//for (int dogIndex = 0; dogIndex < dogPoints.size(); dogIndex++) {
+	//	for (int harrisIndex = 0; harrisIndex < harrisPoints.size(); harrisIndex++) {
+	//
+	//		if (std::abs(dogPoints[dogIndex].scale - harrisPoints[harrisIndex].scale) < eps) {
+	//			if (dogPoints[dogIndex].point.x == harrisPoints[harrisIndex].point.x && dogPoints[dogIndex].point.y == harrisPoints[harrisIndex].point.y) {
+	//				pointsOfInterest.push_back(dogPoints[dogIndex]);
+	//			}
+	//		}
+	//	}
+	//}
 
 	return pointsOfInterest;
 }
+
+//find points of interest by via DoG and Harris
+std::vector<ScalePoint> CV_labs::ImageDetectors::HarrisLaplass(const ScaleSpace & imagePyramid, int wk, int localMinK, double harrisThreshold, double dogThreshold) {
+
+	int pointsNeeded = -1;
+
+	vector<ScalePoint> pointsOfInterest;
+
+	double* dogPrev, *dogTarget, *dogNext;
+	double sigma;
+	int pos;
+
+	for (int octaveIndex = 0; octaveIndex < imagePyramid.GetOctavesNum(); octaveIndex++) {
+		for (int layerIndex = 0; layerIndex < imagePyramid.GetLayersNum(); layerIndex++) {
+
+			Image imageTemp = imagePyramid.GetImage(octaveIndex, layerIndex);
+			int cols = imageTemp.GetColsNumber();
+			int rows = imageTemp.GetRowsNumber();
+			int size = cols * rows;
+
+			vector<Point> harrisPointsTemp = Harris(imageTemp, wk, localMinK, harrisThreshold, pointsNeeded);
+
+			dogPrev = imagePyramid.DoG(octaveIndex, layerIndex - 1);
+			dogTarget = imagePyramid.DoG(octaveIndex, layerIndex);
+			dogNext = imagePyramid.DoG(octaveIndex, layerIndex + 1);
+
+
+			for (int harrisPointIndex = 0; harrisPointIndex < harrisPointsTemp.size(); harrisPointIndex++) {
+
+				pos = harrisPointsTemp[harrisPointIndex].y * cols + harrisPointsTemp[harrisPointIndex].x;
+
+				if ((dogTarget[pos] > dogThreshold) && (dogTarget[pos] > dogPrev[pos]) && (dogTarget[pos] > dogNext[pos])) {
+
+					double sigma = imagePyramid.GetImageSigma(octaveIndex, layerIndex);
+					pointsOfInterest.push_back({ imagePyramid.RestoreCoordinate(harrisPointsTemp[harrisPointIndex], octaveIndex, layerIndex), sigma });
+				}
+			}
+
+			/////////////////////
+			/*string name = "image " + std::to_string(octaveIndex) + " layer " + std::to_string(layerIndex - 1) + " rand " + std::to_string(std::rand());
+			//imshow(name, imagePyramid.GetImage(i, j).GetMat());
+			cv::imwrite("pyramid/" + name + ".png", imageTemp.GetMat());
+
+			Image prev(
+			rows,
+			cols,
+			ImageFilters::NormalizeData(size, DifferenceOfGaussiansRaw(imagePyramid.GetImage(octaveIndex, layerIndex - 1), imageTemp))
+			);
+			name = "dog " + std::to_string(octaveIndex) + " layer " + std::to_string(layerIndex - 1) + " rand " + std::to_string(std::rand());
+			//imshow(name, imagePyramid.GetImage(i, j).GetMat());
+			cv::imwrite("pyramid/" + name + ".png", prev.GetMat());
+
+			Image target(
+			rows,
+			cols,
+			ImageFilters::NormalizeData(size, DifferenceOfGaussiansRaw(imageTemp, imagePyramid.GetImage(octaveIndex, layerIndex + 1)))
+			);
+			name = "dog " + std::to_string(octaveIndex) + " layer " + std::to_string(layerIndex) + " rand " + std::to_string(std::rand());
+			//imshow(name, imagePyramid.GetImage(i, j).GetMat());
+			cv::imwrite("pyramid/" + name + ".png", target.GetMat());
+
+			Image next(
+			rows,
+			cols,
+			ImageFilters::NormalizeData(size, DifferenceOfGaussiansRaw(imagePyramid.GetImage(octaveIndex, layerIndex + 1), imagePyramid.GetImage(octaveIndex, layerIndex + 2)))
+			);
+			name = "dog " + std::to_string(octaveIndex) + " layer " + std::to_string(layerIndex + 1) + " rand " + std::to_string(std::rand());
+			//imshow(name, imagePyramid.GetImage(i, j).GetMat());
+			cv::imwrite("pyramid/" + name + ".png", next.GetMat());
+
+			//cv::imshow("prev ", prev.GetNormalizedImage().GetMat());
+			//cv::imshow("target ", target.GetNormalizedImage().GetMat());
+			//cv::imshow("next ", next.GetNormalizedImage().GetMat());
+
+			//cv::imshow("harris", cv::MatPlotPoints(imageTemp, harrisPointsTemp));
+			name = "harris " + std::to_string(octaveIndex) + " layer " + std::to_string(layerIndex) + " rand " + std::to_string(std::rand());
+			//imshow(name, imagePyramid.GetImage(i, j).GetMat());
+			cv::imwrite("pyramid/" + name + ".png", cv::MatPlotPoints(imageTemp, harrisPointsTemp));
+
+			//cv::imshow("blob's centers", cv::MatPlotPoints(imageTemp, extremumIn3DPointsTemp));
+			name = "blob " + std::to_string(octaveIndex) + " layer " + std::to_string(layerIndex) + " rand " + std::to_string(std::rand());
+			//imshow(name, imagePyramid.GetImage(i, j).GetMat());
+			cv::imwrite("pyramid/" + name + ".png", cv::MatPlotPoints(imageTemp, extremumIn3DPointsTemp));
+
+			//cv::imshow("harris-dog", cv::MatPlotBlobs(imageTemp, pointsOfInterest));
+
+			//cv::waitKey();*/
+			////////////////////
+
+			harrisPointsTemp.clear();
+			harrisPointsTemp.shrink_to_fit();
+			delete[] dogPrev, dogTarget, dogNext;
+		}
+	}
+
+	//vector<ScalePoint> pointsOfInterest;
+	//
+	//double eps = 0.0000001;
+	//
+	//for (int dogIndex = 0; dogIndex < dogPoints.size(); dogIndex++) {
+	//	for (int harrisIndex = 0; harrisIndex < harrisPoints.size(); harrisIndex++) {
+	//
+	//		if (std::abs(dogPoints[dogIndex].scale - harrisPoints[harrisIndex].scale) < eps) {
+	//			if (dogPoints[dogIndex].point.x == harrisPoints[harrisIndex].point.x && dogPoints[dogIndex].point.y == harrisPoints[harrisIndex].point.y) {
+	//				pointsOfInterest.push_back(dogPoints[dogIndex]);
+	//			}
+	//		}
+	//	}
+	//}
+
+	return pointsOfInterest;
+}
+
+//find points of interest by via DoG and Harris
+//std::vector<ScalePoint> CV_labs::ImageDetectors::FindPointsOfInterest(const Image & image) {
+//	
+//	ScaleSpace imagePyramid(image, 0.5, 1.6, 5, 5, 3);
+//
+//	vector<ScalePoint> dogPoints = ImageDetectors::DifferenceOfGaussiansRaw(imagePyramid);
+//
+//	vector<ScalePoint> harrisPoints;
+//	
+//	vector<Point> harrisPointsTemp;
+//	double sigma;
+//
+//	for (int octaveIndex = 0; octaveIndex < imagePyramid.GetOctavesNum(); octaveIndex++) {
+//		for (int layerIndex = 0; layerIndex < imagePyramid.GetLayersNum() + imagePyramid.GetCrossLayersNum(); layerIndex++) {
+//
+//			Image imageTemp = imagePyramid.GetImage(octaveIndex, layerIndex);
+//			harrisPointsTemp = Harris(imageTemp, 5, 5, 0.001, 100);
+//			sigma = imagePyramid.GetImageSigma(octaveIndex, layerIndex);
+//
+//			for (int i = 0; i < harrisPointsTemp.size(); i++) {
+//
+//				harrisPoints.push_back({ harrisPointsTemp[i], sigma });
+//			}
+//		}
+//	}
+//
+//	vector<ScalePoint> pointsOfInterest;
+//
+//	double eps = 0.0000001;
+//
+//	for (int dogIndex = 0; dogIndex < dogPoints.size(); dogIndex++) {
+//		for (int harrisIndex = 0; harrisIndex < harrisPoints.size(); harrisIndex++) {
+//
+//			if (std::abs(dogPoints[dogIndex].scale - harrisPoints[harrisIndex].scale) < eps) {
+//				if (dogPoints[dogIndex].point.x == harrisPoints[harrisIndex].point.x && dogPoints[dogIndex].point.y == harrisPoints[harrisIndex].point.y) {
+//					pointsOfInterest.push_back(dogPoints[dogIndex]);
+//				}
+//			}
+//		}
+//	}
+//
+//	return pointsOfInterest;
+//}
 
 //calculate difference of arrays
 double * ImageDetectors::arrayDifference(int size, const double * const data0, const double * const data1) {
@@ -561,7 +946,7 @@ double * ImageDetectors::arrayDifference(int size, const double * const data0, c
 }
 
 //find extremum in 3d (for DoG)
-vector<Point> ImageDetectors::findExtremumIn3D(int rows, int cols, const double * const dataTarget, const double * const dataPrevious, const double * const dataNext) {
+vector<Point> ImageDetectors::ExtremumIn3DRaw(int rows, int cols, const double* const dataPrevious, const double* const dataTarget, const double* const dataNext, double threshold) {
 	
 	vector<Point> extremums;
 	double val;
@@ -573,17 +958,23 @@ vector<Point> ImageDetectors::findExtremumIn3D(int rows, int cols, const double 
 	data[1] = dataTarget;
 	data[2] = dataNext;
 
-	double eps = 0.0000001;
+	double eps = dataTarget[0];
 
 	for (int row = 1; row < rows - 1; row++) {
 		for (int col = 1; col < cols - 1; col++) {
 
-			if (row == 158 && col == 320)
-				int sotp = 1;
 			val = dataTarget[row * cols + col];
+				if (eps < val)
+					eps = val;
+			if (std::abs(val) < threshold) {
+				continue;
+			}
+
 			maxFlag = true;
 			minFlag = true;
 
+			if (row >= 47 && row <= 47 && col >= 57 && col <= 59)//38-74, 39-74???
+				int stop = 1;
 			for (int index = 0; (index < 3) && (maxFlag || minFlag); index++) {
 				for (int rowOff = row - 1; (rowOff <= row + 1) && (maxFlag || minFlag); rowOff++) {
 					for (int colOff = col - 1; (colOff <= col + 1) && (maxFlag || minFlag); colOff++) {
@@ -592,11 +983,11 @@ vector<Point> ImageDetectors::findExtremumIn3D(int rows, int cols, const double 
 							continue;
 						}
 
-						if (maxFlag && ImageFilters::GetVirtualPixelZero(rowOff, colOff, rows, cols, data[index]) > val - eps) {
+						if (maxFlag && ImageFilters::GetVirtualPixelZero(rowOff, colOff, rows, cols, data[index]) - val >= 0) {
 							maxFlag = false;
 						}
 
-						if (minFlag && ImageFilters::GetVirtualPixelZero(rowOff, colOff, rows, cols, data[index]) < val + eps) {
+						if (minFlag && ImageFilters::GetVirtualPixelZero(rowOff, colOff, rows, cols, data[index]) - val <= 0) {
 							minFlag = false;
 						}
 					}
