@@ -492,6 +492,7 @@ void lab6() {
 //C:\Users\alist\Desktop\cv\Lena2.jpg
 //C:\Users\alist\Desktop\cv\Lena2little.jpg
 //C:\Users\alist\Desktop\cv\Lena2littlerotate.jpg
+//C:\Users\alist\Desktop\cv\Lena2littlerotatesize.jpg
 //C:\Users\alist\Desktop\cv\Lena3.jpg
 //C:\Users\alist\Desktop\cv\Lena2lheight.jpg
 //C:\Users\alist\Desktop\cv\Lena2contrast.jpg

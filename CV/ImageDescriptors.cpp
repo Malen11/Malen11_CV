@@ -213,16 +213,16 @@ Descriptor CV_labs::ImageDescriptorMethods::CreateSquareDescriptorRaw(Point poin
 			yCenterRotated = descriptorCenterY + (xCenter - descriptorCenterX) * sinAlpha + (yCenter - descriptorCenterY) * cosAlpha;
 
 			//calculate left-top hist index
-			histogramXIndex = (xCenterRotated - 0.5 - x0) / histStepX;
-			histogramYIndex = (yCenterRotated - 0.5 - y0) / histStepY;
+			histogramXIndex = (xCenterRotated - histStepX / 2.0 - x0) / histStepX;
+			histogramYIndex = (yCenterRotated - histStepY / 2.0 - y0) / histStepY;
 
 			if (histogramXIndex < - 1 || histogramXIndex > histogramNumD - 1 || histogramYIndex < - 1 || histogramYIndex > histogramNumD - 1) {
 				continue;
 			}
 
-			//calc distance between left-top point and right border of gist (max 1)
-			xCoef = std::min(x0 + (histogramXIndex + 1) * histStepX - (xCenterRotated - 0.5), 1.0);
-			yCoef = std::min(y0 + (histogramYIndex + 1) * histStepY - (yCenterRotated - 0.5), 1.0);
+			//calc distance between left-top hist center and pixel center
+			xCoef = 1 - (xCenterRotated - x0 - histogramXIndex * histStepX - histStepX / 2.0) / histStepX;
+			yCoef = 1 - (yCenterRotated - y0 - histogramYIndex * histStepY - histStepY / 2.0) / histStepY;
 
 			//gradient by coordinate
 			Gradient pixelGradient = ImageFilters::GetVirtualPixelGradientZero(rowAbs, colAbs, rows, cols, gradients);
