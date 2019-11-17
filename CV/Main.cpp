@@ -132,6 +132,22 @@ cv::Mat MatPlotLines(Image& img, vector<CV_labs::Line> lines, int color = 0) {
 	return colored;
 }
 
+cv::Mat MatPlotBlobs(Image & img, ScaleSpace & scaleSpace, vector<CV_labs::ScalePoint> points, int color = 0) {
+
+	cv::Mat temp = img.GetMat();
+	cv::Mat colored;
+	cv::cvtColor(temp, colored, cv::COLOR_GRAY2BGR);
+
+	for (vector<CV_labs::ScalePoint>::iterator it = points.begin(); it != points.end(); it++) {
+
+		CV_labs::Point point = scaleSpace.RestoreCoordinate((*it).point, (*it).scale);
+		
+		circle(colored, cv::Point(point.x, point.y), sqrt(2) * (*it).scale, CV_RGB(255, 0, 0), 1);
+	}
+
+	return colored;
+}
+
 cv::Mat MatPlotBlobs(Image& img, vector<CV_labs::ScalePoint> points, int color = 0) {
 
 	cv::Mat temp = img.GetMat();
@@ -140,10 +156,6 @@ cv::Mat MatPlotBlobs(Image& img, vector<CV_labs::ScalePoint> points, int color =
 
 	for (vector<CV_labs::ScalePoint>::iterator it = points.begin(); it != points.end(); it++) {
 
-		//проверка, что все значения допустимы (костыль, потом удалить)
-		img.GetValueAt((*it).point);
-		
-		//if ((*it).point.x > 300 && (*it).point.x < 340 && (*it).point.y > 140 && (*it).point.y < 180)
 		circle(colored, cv::Point((*it).point.x, (*it).point.y), sqrt(2) * (*it).scale, CV_RGB(255, 0, 0), 1);
 	}
 
@@ -352,15 +364,13 @@ void lab5() {
 	*/
 	
 	int points;
-
 	cout << "Enter points num: ";
 	cin >> points;
 
-
-	vector<CV_labs::Point> pointsANMS1 = ImageDetectors::Harris(test1, 2, 2, 0.03, points);
+	vector<CV_labs::Point> pointsANMS1 = ImageDetectors::Harris(test1, 2, 2, 0.01, points);
 	imshow("Harris Points image 1 (ANMS)", MatPlotPoints(test1, pointsANMS1));
 
-	vector<CV_labs::Point> pointsANMS2 = ImageDetectors::Harris(test2, 2, 2, 0.03, points);
+	vector<CV_labs::Point> pointsANMS2 = ImageDetectors::Harris(test2, 2, 2, 0.01, points);
 	imshow("Harris Points image 2 (ANMS)", MatPlotPoints(test2, pointsANMS2));
 
 	//testAlpha = 0;
@@ -416,35 +426,42 @@ void lab6() {
 	int wk;
 	cout << "Enter wk: ";
 	cin >> wk;
+
 	int localMinK;
 	cout << "Enter localMinK: ";
 	cin >> localMinK;
+
 	double harrisThreshold;
 	cout << "Enter harris threshold: ";
 	cin >> harrisThreshold;
+
 	double dogThreshold;
 	cout << "Enter dog threshold: ";
 	cin >> dogThreshold;
+
+	int points;
+	cout << "Enter num points in scale: ";
+	cin >> points;
 
 	double sigmaA = 0.5, sigma0 = 1.6;
 	ScaleSpace imagePyramid1(test1, 4, 5, sigmaA, sigma0, 0, 1, 2);
 	ScaleSpace imagePyramid2(test2, 4, 5, sigmaA, sigma0, 0, 1, 2);
 
-	vector<CV_labs::ScalePoint> blobs1 = ImageDetectors::HarrisLaplass(imagePyramid1, wk, localMinK, harrisThreshold, dogThreshold);
-	imshow("Blobs 1", MatPlotBlobs(test1, blobs1));
+	vector<CV_labs::ScalePoint> blobs1 = ImageDetectors::HarrisLaplass(imagePyramid1, wk, localMinK, harrisThreshold, dogThreshold, points);
+	imshow("Blobs 1", MatPlotBlobs(test1, imagePyramid1, blobs1));
 
-	vector<CV_labs::ScalePoint> blobs2 = ImageDetectors::HarrisLaplass(imagePyramid2, wk, localMinK, harrisThreshold, dogThreshold);
-	imshow("Blobs 2", MatPlotBlobs(test2, blobs2));
+	vector<CV_labs::ScalePoint> blobs2 = ImageDetectors::HarrisLaplass(imagePyramid2, wk, localMinK, harrisThreshold, dogThreshold, points);
+	imshow("Blobs 2", MatPlotBlobs(test2, imagePyramid2, blobs2));
 
 	cv::waitKey();
 
 	//testAlpha = 0;
-	vector<CV_labs::Descriptor> descriptors1 = ImageDescriptorMethods::CreateDescriptors(imagePyramid1, blobs1, 16, 4, 8, ImageDescriptorMethods::kDescriptorTypeSquare, ImageDescriptorMethods::kDescriptorNormalization2Times);
+	vector<CV_labs::Descriptor> descriptors1 = ImageDescriptorMethods::CreateDescriptors(imagePyramid1, blobs1, 16, 4, 16, ImageDescriptorMethods::kDescriptorTypeSquare, ImageDescriptorMethods::kDescriptorNormalization2Times);
 	cout << "\n";
 	//testAlpha = ImageFilters::PI() * angle / 180.0;
-	vector<CV_labs::Descriptor> descriptors2 = ImageDescriptorMethods::CreateDescriptors(imagePyramid2, blobs2, 16, 4, 8, ImageDescriptorMethods::kDescriptorTypeSquare, ImageDescriptorMethods::kDescriptorNormalization2Times);
+	vector<CV_labs::Descriptor> descriptors2 = ImageDescriptorMethods::CreateDescriptors(imagePyramid2, blobs2, 16, 4, 16, ImageDescriptorMethods::kDescriptorTypeSquare, ImageDescriptorMethods::kDescriptorNormalization2Times);
 	cout << "\n";
-	vector<CV_labs::Line> matchedDesc = ImageDescriptorMethods::DescriptorsMatching(descriptors1, descriptors2, ImageDescriptorMethods::kDescriptorsComparisonEuclid, ImageDescriptorMethods::kDescriptorsMatchingMutal);
+	vector<CV_labs::Line> matchedDesc = ImageDescriptorMethods::DescriptorsMatching(descriptors1, descriptors2, ImageDescriptorMethods::kDescriptorsComparisonEuclid, ImageDescriptorMethods::kDescriptorsMatchingNNDR, 0.7);
 	Image emptyImg(test1.GetRowsNumber() + test2.GetRowsNumber(), test1.GetColsNumber() + test2.GetColsNumber(), (uchar)0);
 	emptyImg.InsertImage(test1, 0, 0);
 	emptyImg.InsertImage(test2, test1.GetColsNumber(), test1.GetRowsNumber());
@@ -473,6 +490,8 @@ void lab6() {
 //C:\Users\alist\Desktop\cv\obj2.jpg
 //C:\Users\alist\Desktop\cv\star.jpg
 //C:\Users\alist\Desktop\cv\Lena2.jpg
+//C:\Users\alist\Desktop\cv\Lena2little.jpg
+//C:\Users\alist\Desktop\cv\Lena2littlerotate.jpg
 //C:\Users\alist\Desktop\cv\Lena3.jpg
 //C:\Users\alist\Desktop\cv\Lena2lheight.jpg
 //C:\Users\alist\Desktop\cv\Lena2contrast.jpg

@@ -163,11 +163,11 @@ namespace CV_labs {
 		int index = getImageIndex(sigma);
 
 		int octave = index / realLayersNum;
-		double k = 1 / std::pow(2, octave);
+		double k = std::pow(2, octave);
 
 		CV_labs::Point result;
-		result.x = std::round(point.x * k);
-		result.y = std::round(point.y * k);
+		result.x = point.x / k;
+		result.y = point.y / k;
 
 		return result;
 	}
@@ -187,8 +187,8 @@ namespace CV_labs {
 		double k = std::pow(2, octave);
 
 		CV_labs::Point result;
-		result.x = std::round(point.x * k);
-		result.y = std::round(point.y * k);
+		result.x = point.x * k + k / 2.0;
+		result.y = point.y * k + k / 2.0;
 
 		return result;
 	}
@@ -212,8 +212,8 @@ namespace CV_labs {
 		double k = std::pow(2, octave);
 
 		CV_labs::Point result;
-		result.x = std::round(point.x * k);
-		result.y = std::round(point.y * k);
+		result.x = point.x * k + k / 2.0;
+		result.y = point.y * k + k / 2.0;
 
 		return result;
 	}
@@ -228,7 +228,7 @@ namespace CV_labs {
 	inline int ScaleSpace::getImageIndex(double sigma) const {
 
 		//if sigma lower then first image's sigma, return first image
-		if(sigma < sigma0) {
+		if(sigma < GetImageSigma(0, 0)) {
 			return prependOctavesNum * realLayersNum + prependLayersNum;
 		}
 

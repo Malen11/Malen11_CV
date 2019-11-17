@@ -44,7 +44,8 @@ std::vector<Descriptor> CV_labs::ImageDescriptorMethods::CreateDescriptors(Scale
 
 			if (std::abs(points[pointIndex].scale - scales[scaleIndex]) < eps) {
 
-				pointsInScale.push_back(scaleSpace.ConvertCoordinate(points[pointIndex].point, scales[scaleIndex]));
+				//pointsInScale.push_back(points[pointIndex].point);
+				pointsInScale.push_back(points[pointIndex].point);
 			}
 		}
 
@@ -52,9 +53,10 @@ std::vector<Descriptor> CV_labs::ImageDescriptorMethods::CreateDescriptors(Scale
 
 		std::vector<Descriptor> tmp = CreateDescriptorsRaw(tmpImage.GetRowsNumber(), tmpImage.GetColsNumber(), data, pointsInScale, DescriptorSizeD, histogramNumD, intervalsNum, descriptorType, descriptorNormalizationType);
 		
-		for (int pointIndex = 0; pointIndex < pointsInScale.size(); pointIndex++) {
-			tmp[pointIndex].point = scaleSpace.RestoreCoordinate(pointsInScale[pointIndex], scales[scaleIndex]);
-			result.push_back(tmp[pointIndex]);
+		for (int descIndex = 0; descIndex < tmp.size(); descIndex++) {
+
+			tmp[descIndex].point = scaleSpace.RestoreCoordinate(tmp[descIndex].point, scales[scaleIndex]);
+			result.push_back(tmp[descIndex]);
 		}
 
 		pointsInScale.clear();
@@ -384,36 +386,35 @@ int * ImageDescriptorMethods::DescriptorsMatchingRaw(std::vector<Descriptor> des
 
 	int* descriptor1PairIn2 = new int[descriptors1Num];
 	int* descriptor2PairIn1;
-	int* descriptor1PairIn2NND;
 
 	int matchedIn2, matchedIn1;
+	int match1, match2;
 
 	switch (descriptorsMatchingType) {
 	case kDescriptorsMatchingNNDR:
 
-		descriptor1PairIn2NND = new int[descriptors1Num];
-
 		for (int i = 0; i < descriptors1Num; i++) {
 
-			descriptor1PairIn2[i] = 0;
-			descriptor1PairIn2NND[i] = -1;
+			match1 = 0;
+			match2 = -1;
 
 			//find nearest descriptor and second nearest
 			for (int j = 1; j < descriptors2Num; j++) {
-				if (descsDiff[i * descriptors2Num + descriptor1PairIn2[i]] > descsDiff[i * descriptors2Num + j]) {
+				if (descsDiff[i * descriptors2Num + match1] > descsDiff[i * descriptors2Num + j]) {
 
-					descriptor1PairIn2NND[i] = descriptor1PairIn2[i];
-					descriptor1PairIn2[i] = j;
+					match2 = match1;
+					match1 = j;
 				}
 			}
 
-			if (descriptor1PairIn2NND[i] != -1) {
-				if (descsDiff[i*descriptors2Num + descriptor1PairIn2[i]] / descsDiff[i * descriptors2Num + descriptor1PairIn2NND[i]] > thresh)
+			descriptor1PairIn2[i] = match1;
+
+			if (match2 != -1) {
+				if (descsDiff[i * descriptors2Num + match1] / descsDiff[i * descriptors2Num + match2] > thresh) {
 					descriptor1PairIn2[i] = -1;
+				}
 			}
 		}
-
-		delete[] descriptor1PairIn2NND;
 
 		break;
 

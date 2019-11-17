@@ -31,7 +31,7 @@ namespace CV_labs {
 		static std::vector<Point> HarrisRaw(int rows, int cols, double * data, double sigmaD, int wk, double sigmaI, int localMinK, double Threshold, int pointsNeeded = -1, int PartDerivativeType = ImageFilters::kPartDerivativeTypeSobelCore);
 
 		//calculate response for Harris
-		static double* HarrisResponseRaw(int rows, int cols, double * data, double sigmaD, int wk, double sigmaI, int PartDerivativeType = ImageFilters::kPartDerivativeTypeSobelCore, int harrisResponseType = kHarrisResponseBase);
+		static double* HarrisResponseRaw(int rows, int cols, double * data, double sigmaD, int wk, double sigmaI, int PartDerivativeType = ImageFilters::kPartDerivativeTypeSobelCore, int harrisResponseType = kHarrisResponseForstner);
 
 		//Use adaptive non-max supression
 		static std::vector<Point> ANMS(std::vector<Point> points, int rows, int cols, double* responseMap, int pointsNeeded, double c = 0.9);
@@ -49,7 +49,7 @@ namespace CV_labs {
 		static std::vector<ScalePoint> FindPointsOfInterest(const ScaleSpace &imagePyramid, int wk, int localMinK, double harrisThreshold, double dogThreshold);
 
 		//find points of interest via DoG and Harris
-		static std::vector<ScalePoint> HarrisLaplass(const ScaleSpace &imagePyramid, int wk, int localMinK, double harrisThreshold, double dogThreshold);
+		static std::vector<ScalePoint> HarrisLaplass(const ScaleSpace &imagePyramid, int wk, int localMinK, double harrisThreshold, double dogThreshold, int pointsNeeded = -1);
 	private:
 		//calculate difference of arrays
 		static double* arrayDifference(int size, const double* const data0, const double* const data1);

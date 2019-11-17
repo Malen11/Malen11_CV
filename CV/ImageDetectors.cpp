@@ -652,7 +652,7 @@ std::vector<Point> ImageDetectors::ANMS(std::vector<Point> points, int rows, int
 //find points of interest by via DoG and Harris
 std::vector<ScalePoint> CV_labs::ImageDetectors::FindPointsOfInterest(const ScaleSpace & imagePyramid, int wk, int localMinK, double harrisThreshold, double dogThreshold) {
 
-	int /*wk = 2, localMinK = 2,*/ pointsNeeded = -1;
+	int /*wk = 2, localMinK = 2,*/ pointsNeeded = 1;
 	//double threshold = 0.01;
 
 	vector<ScalePoint> pointsOfInterest;
@@ -777,9 +777,7 @@ std::vector<ScalePoint> CV_labs::ImageDetectors::FindPointsOfInterest(const Scal
 }
 
 //find points of interest by via DoG and Harris
-std::vector<ScalePoint> CV_labs::ImageDetectors::HarrisLaplass(const ScaleSpace & imagePyramid, int wk, int localMinK, double harrisThreshold, double dogThreshold) {
-
-	int pointsNeeded = -1;
+std::vector<ScalePoint> CV_labs::ImageDetectors::HarrisLaplass(const ScaleSpace & imagePyramid, int wk, int localMinK, double harrisThreshold, double dogThreshold, int pointsNeeded) {
 
 	vector<ScalePoint> pointsOfInterest;
 
@@ -791,55 +789,112 @@ std::vector<ScalePoint> CV_labs::ImageDetectors::HarrisLaplass(const ScaleSpace 
 		for (int layerIndex = 0; layerIndex < imagePyramid.GetLayersNum(); layerIndex++) {
 
 			Image imageTemp = imagePyramid.GetImage(octaveIndex, layerIndex);
+			double sigma = imagePyramid.GetImageSigma(octaveIndex, layerIndex);
+
+			double * data = imageTemp.GetDataD();
 			int cols = imageTemp.GetColsNumber();
 			int rows = imageTemp.GetRowsNumber();
 			int size = cols * rows;
+			
+			//calculate response map
+			double* responseMap = HarrisResponseRaw(rows, cols, data, wk / 3.0, wk, wk / 3.0);
 
-			vector<Point> harrisPointsTemp = Harris(imageTemp, wk, localMinK, harrisThreshold, pointsNeeded);
+			std::vector<Point> harrisPoints;
+			std::vector<Point> harrisPointsTemp;
+			bool isPoint;
+			int pos;
 
+			for (int i = 0; i < rows; i++) {
+				for (int j = 0; j < cols; j++) {
+
+					isPoint = true;
+					pos = i * cols + j;
+
+					if (responseMap[pos] > harrisThreshold) {
+						for (int u = -localMinK; isPoint && (u <= localMinK); u++) {
+							for (int v = -localMinK; isPoint && (v <= localMinK); v++) {
+
+								if (u == 0 && v == 0) {
+									continue;
+								}
+
+								if (responseMap[pos] <= ImageFilters::GetVirtualPixelZero(i + u, j + v, rows, cols, responseMap)) {
+
+									isPoint = false;
+								}
+							}
+						}
+					}
+					else {
+						isPoint = false;
+					}
+
+					if (isPoint) {
+
+						harrisPoints.push_back({ j, i });
+					}
+				}
+			}
+
+			//calculate DoG
 			dogPrev = imagePyramid.DoG(octaveIndex, layerIndex - 1);
 			dogTarget = imagePyramid.DoG(octaveIndex, layerIndex);
 			dogNext = imagePyramid.DoG(octaveIndex, layerIndex + 1);
 
+			for (int harrisPointIndex = 0; harrisPointIndex < harrisPoints.size(); harrisPointIndex++) {
 
-			for (int harrisPointIndex = 0; harrisPointIndex < harrisPointsTemp.size(); harrisPointIndex++) {
+				pos = harrisPoints[harrisPointIndex].y * cols + harrisPoints[harrisPointIndex].x;
 
-				pos = harrisPointsTemp[harrisPointIndex].y * cols + harrisPointsTemp[harrisPointIndex].x;
+				if ((std::abs(dogTarget[pos]) > dogThreshold) && (dogTarget[pos] > dogPrev[pos]) && (dogTarget[pos] > dogNext[pos])) {
 
-				if ((dogTarget[pos] > dogThreshold) && (dogTarget[pos] > dogPrev[pos]) && (dogTarget[pos] > dogNext[pos])) {
-
-					double sigma = imagePyramid.GetImageSigma(octaveIndex, layerIndex);
-					pointsOfInterest.push_back({ imagePyramid.RestoreCoordinate(harrisPointsTemp[harrisPointIndex], octaveIndex, layerIndex), sigma });
+					harrisPointsTemp.push_back(harrisPoints[harrisPointIndex]);
 				}
 			}
 
+			harrisPoints.clear();
+			harrisPoints.shrink_to_fit();
+
+			if (pointsNeeded > 0) {
+
+				harrisPoints = ANMS(harrisPointsTemp, rows, cols, responseMap, pointsNeeded, 1);
+			}
+			else {
+				harrisPoints = harrisPointsTemp;
+			}
+			
+			for (int harrisPointIndex = 0; harrisPointIndex < harrisPoints.size(); harrisPointIndex++) {
+
+				//pointsOfInterest.push_back({ harrisPoints[harrisPointIndex], sigma });
+				pointsOfInterest.push_back({ harrisPoints[harrisPointIndex], sigma });
+			}
+
 			/////////////////////
-			/*string name = "image " + std::to_string(octaveIndex) + " layer " + std::to_string(layerIndex - 1) + " rand " + std::to_string(std::rand());
+			/*string name = "image " + std::to_string(octaveIndex) + " layer " + std::to_string(layerIndex) + " rand " + std::to_string(std::rand());
 			//imshow(name, imagePyramid.GetImage(i, j).GetMat());
 			cv::imwrite("pyramid/" + name + ".png", imageTemp.GetMat());
 
 			Image prev(
-			rows,
-			cols,
-			ImageFilters::NormalizeData(size, DifferenceOfGaussiansRaw(imagePyramid.GetImage(octaveIndex, layerIndex - 1), imageTemp))
+				rows,
+				cols,
+				ImageFilters::NormalizeData(size, dogPrev)
 			);
 			name = "dog " + std::to_string(octaveIndex) + " layer " + std::to_string(layerIndex - 1) + " rand " + std::to_string(std::rand());
 			//imshow(name, imagePyramid.GetImage(i, j).GetMat());
 			cv::imwrite("pyramid/" + name + ".png", prev.GetMat());
 
 			Image target(
-			rows,
-			cols,
-			ImageFilters::NormalizeData(size, DifferenceOfGaussiansRaw(imageTemp, imagePyramid.GetImage(octaveIndex, layerIndex + 1)))
+				rows,
+				cols,
+				ImageFilters::NormalizeData(size, dogTarget)
 			);
 			name = "dog " + std::to_string(octaveIndex) + " layer " + std::to_string(layerIndex) + " rand " + std::to_string(std::rand());
 			//imshow(name, imagePyramid.GetImage(i, j).GetMat());
 			cv::imwrite("pyramid/" + name + ".png", target.GetMat());
 
 			Image next(
-			rows,
-			cols,
-			ImageFilters::NormalizeData(size, DifferenceOfGaussiansRaw(imagePyramid.GetImage(octaveIndex, layerIndex + 1), imagePyramid.GetImage(octaveIndex, layerIndex + 2)))
+				rows,
+				cols,
+				ImageFilters::NormalizeData(size, dogNext)
 			);
 			name = "dog " + std::to_string(octaveIndex) + " layer " + std::to_string(layerIndex + 1) + " rand " + std::to_string(std::rand());
 			//imshow(name, imagePyramid.GetImage(i, j).GetMat());
@@ -857,33 +912,21 @@ std::vector<ScalePoint> CV_labs::ImageDetectors::HarrisLaplass(const ScaleSpace 
 			//cv::imshow("blob's centers", cv::MatPlotPoints(imageTemp, extremumIn3DPointsTemp));
 			name = "blob " + std::to_string(octaveIndex) + " layer " + std::to_string(layerIndex) + " rand " + std::to_string(std::rand());
 			//imshow(name, imagePyramid.GetImage(i, j).GetMat());
-			cv::imwrite("pyramid/" + name + ".png", cv::MatPlotPoints(imageTemp, extremumIn3DPointsTemp));
+			cv::imwrite("pyramid/" + name + ".png", cv::MatPlotPoints(imageTemp, harrisPoints));
 
 			//cv::imshow("harris-dog", cv::MatPlotBlobs(imageTemp, pointsOfInterest));
 
 			//cv::waitKey();*/
 			////////////////////
 
+			harrisPoints.clear();
+			harrisPoints.shrink_to_fit();
 			harrisPointsTemp.clear();
 			harrisPointsTemp.shrink_to_fit();
-			delete[] dogPrev, dogTarget, dogNext;
+
+			delete[] dogPrev, dogTarget, dogNext, responseMap, data;
 		}
 	}
-
-	//vector<ScalePoint> pointsOfInterest;
-	//
-	//double eps = 0.0000001;
-	//
-	//for (int dogIndex = 0; dogIndex < dogPoints.size(); dogIndex++) {
-	//	for (int harrisIndex = 0; harrisIndex < harrisPoints.size(); harrisIndex++) {
-	//
-	//		if (std::abs(dogPoints[dogIndex].scale - harrisPoints[harrisIndex].scale) < eps) {
-	//			if (dogPoints[dogIndex].point.x == harrisPoints[harrisIndex].point.x && dogPoints[dogIndex].point.y == harrisPoints[harrisIndex].point.y) {
-	//				pointsOfInterest.push_back(dogPoints[dogIndex]);
-	//			}
-	//		}
-	//	}
-	//}
 
 	return pointsOfInterest;
 }

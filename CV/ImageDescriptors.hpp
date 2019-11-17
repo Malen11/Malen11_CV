@@ -62,10 +62,10 @@ namespace CV_labs {
 		static double DescriptorsDifference(Descriptor desc0, Descriptor desc1, int descriptorsComparisonType = kDescriptorsComparisonEuclid);
 
 		//matching descriptors from descs1 to descs2
-		static int* DescriptorsMatchingRaw(std::vector<Descriptor> descriptors1, std::vector<Descriptor> descriptors2, int descriptorsComparisionType = kDescriptorsComparisonEuclid, int descriptorsMatchingType = kDescriptorsMatchingBase, double thresh = 0);
+		static int* DescriptorsMatchingRaw(std::vector<Descriptor> descriptors1, std::vector<Descriptor> descriptors2, int descriptorsComparisionType = kDescriptorsComparisonEuclid, int descriptorsMatchingType = kDescriptorsMatchingBase, double thresh = 0.8);
 
 		//matching descriptors from descs1 to descs2
-		static std::vector<Line> DescriptorsMatching(std::vector<Descriptor> descriptors1, std::vector<Descriptor> descriptors2, int descriptorsComparisionType = kDescriptorsComparisonEuclid, int descriptorsMatchingType = kDescriptorsMatchingBase, double thresh = 0);
+		static std::vector<Line> DescriptorsMatching(std::vector<Descriptor> descriptors1, std::vector<Descriptor> descriptors2, int descriptorsComparisionType = kDescriptorsComparisonEuclid, int descriptorsMatchingType = kDescriptorsMatchingBase, double thresh = 0.8);
 
 		//calculate dominating angles
 		static std::vector<double> CalculateDominatingAngle(Point point, int rows, int cols, const Gradient * gradients, int windowSizeD, int intervalsNum = 36, double thresh = 0.8, int alphaNumMax = 2);
